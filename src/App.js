@@ -42,64 +42,95 @@ const MUNICIPIOS = [
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   GEOMETRÍA ROBUSTA
-   Dado N (norte/top), S (sur/bottom), E (este/derecha), O (oeste/izquierda):
-   - TL = (0, 0),  TR = (N, 0)
-   - BL = (bx, by) con |TL→BL|=O
-   - BR = (bx+S, by) con |TR→BR|=E
-   
-   Solución exacta cuando es posible (by²>0), o aproximación proporcional 
-   cuando las medidas son geométricamente inconsistentes.
-   
-   Retorna: { TL, TR, BL, BR, valid: bool, maxE: número máximo posible de E }
-───────────────────────────────────────────────────────────────────────────── */
+  GEOMETRÍA REAL SIN RESTRICCIÓN DE LADOS PARALELOS
+
+  - TL = (0, 0)   TR = (N, 0)   Norte SIEMPRE horizontal.
+  - Barremos el ángulo θ del lado Este (dirección TR→BR) de 91° a 269°
+    (aseguramos que BR quede debajo de la línea Norte).
+  - Para cada θ calculamos BR = TR + E*(cosθ, sinθ).
+  - Verificamos si existe BL a distancia O de TL y S de BR.
+  - Elegimos el θ que produce el cuadrilátero CONVEXO con mayor altura.
+  - Si no existe solución convexo, tomamos la mejor no-convexo.
+  - Si no existe ninguna solución, retornamos valid=false con aproximación.
+─────────────────────────────────────────────────────────────────────────────── */
+const cross2D = (O, A, B) =>
+  (A.x - O.x) * (B.y - O.y) - (A.y - O.y) * (B.x - O.x);
+
 const solveQuad = (N, S, E, O) => {
-  const safe = v => Math.max(v, 0.1);
-  N = safe(N); S = safe(S); E = safe(E); O = safe(O);
+  N = Math.max(N, 0.1); S = Math.max(S, 0.1);
+  E = Math.max(E, 0.1); O = Math.max(O, 0.1);
 
-  const d = N - S;
-  let bx;
-  if (Math.abs(d) < 0.001) {
-    // Paralelogramo (N ≈ S)
-    bx = (O * O - E * E) / (2 * N + 0.001);
-  } else {
-    bx = (d * d + O * O - E * E) / (2 * d);
+  const TL = { x: 0, y: 0 };
+  const TR = { x: N, y: 0 };
+
+  let bestConvex = null, bestConvexScore = -Infinity;
+  let bestAny    = null, bestAnyScore    = -Infinity;
+
+  // Sweep angle of Este side (going downward: 91°→269°)
+  for (let deg = 91; deg <= 269; deg += 0.5) {
+    const rad = deg * Math.PI / 180;
+    const BR = { x: TR.x + E * Math.cos(rad), y: TR.y + E * Math.sin(rad) };
+
+    // Distance TL → BR
+    const dTLBR = Math.hypot(BR.x - TL.x, BR.y - TL.y);
+
+    // Can BL exist at distance O from TL and S from BR?
+    if (dTLBR < Math.abs(O - S) + 1e-6 || dTLBR > O + S - 1e-6) continue;
+
+    // Compute BL in local frame (TL origin, BR on x-axis)
+    const BLlx = (dTLBR * dTLBR + O * O - S * S) / (2 * dTLBR);
+    const BLly2 = O * O - BLlx * BLlx;
+    if (BLly2 < 0) continue;
+    const BLly = Math.sqrt(BLly2);
+
+    // Unit vector TL→BR
+    const ux = (BR.x - TL.x) / dTLBR;
+    const uy = (BR.y - TL.y) / dTLBR;
+
+    // Two candidate BL positions (perpendicular ±)
+    const cands = [
+      { x: TL.x + BLlx * ux - BLly * uy, y: TL.y + BLlx * uy + BLly * ux },
+      { x: TL.x + BLlx * ux + BLly * uy, y: TL.y + BLlx * uy - BLly * ux },
+    ];
+
+    for (const BL of cands) {
+      if (BL.y <= 0) continue; // Must be below Norte line
+
+      // Check convexity (all cross-products same sign → convex)
+      const c1 = cross2D(TL, TR, BR);
+      const c2 = cross2D(TR, BR, BL);
+      const c3 = cross2D(BR, BL, TL);
+      const c4 = cross2D(BL, TL, TR);
+      const isConvex = c1 > 0 && c2 > 0 && c3 > 0 && c4 > 0;
+
+      // Score: maximize height + prefer centered shape
+      const height    = (BR.y + BL.y) / 2;
+      const centerX   = (TL.x + TR.x + BR.x + BL.x) / 4;
+      const symScore  = -Math.abs(centerX - N / 2) * 0.05;
+      const score     = height + symScore;
+
+      if (isConvex && score > bestConvexScore) {
+        bestConvexScore = score;
+        bestConvex = { TL, TR, BR: { ...BR }, BL: { ...BL }, valid: true };
+      }
+      if (score > bestAnyScore) {
+        bestAnyScore = score;
+        bestAny = { TL, TR, BR: { ...BR }, BL: { ...BL }, valid: false };
+      }
+    }
   }
 
-  const by2 = O * O - bx * bx;
+  if (bestConvex) return bestConvex;
+  if (bestAny)    return { ...bestAny, valid: false };
 
-  if (by2 > 1e-4) {
-    // ✅ Solución exacta válida
-    const by = Math.sqrt(by2);
-    return {
-      TL: { x: 0,      y: 0  },
-      TR: { x: N,      y: 0  },
-      BL: { x: bx,     y: by },
-      BR: { x: bx + S, y: by },
-      valid: true,
-    };
-  }
-
-  // ⚠️ Medidas inconsistentes: calcular E máximo y hacer aproximación visual
-  // E_max se da cuando by=0, es decir |bx|=O → bx=±O
-  // Intentamos bx negativo primero (caso más común cuando E>N)
-  const bxForMaxE = -Math.sqrt(Math.max(0, O * O)); // bx más negativo posible
-  const eMax1 = Math.sqrt((N - bxForMaxE - S) ** 2); // by=0
-  const eMax2 = Math.sqrt((N - O - S) ** 2 + 0);
-  const maxE = Math.max(eMax1, eMax2, N + O + 0.01);
-
-  // Aproximación: fijar una altura mínima razonable (30% del lado mayor)
-  const byApprox = Math.max(O, E) * 0.45;
-  // bx proporcional al desfase Norte-Sur
-  const bxApprox = (N - S) / 2;
-
+  // Absolute fallback (visually approximate)
+  const h = (O + E) * 0.4;
+  const dx = (N - S) / 2;
   return {
-    TL: { x: 0,             y: 0         },
-    TR: { x: N,             y: 0         },
-    BL: { x: bxApprox,      y: byApprox  },
-    BR: { x: bxApprox + S,  y: byApprox  },
+    TL, TR,
+    BR: { x: N - dx * 0.3, y: h },
+    BL: { x: dx * 0.3,     y: h },
     valid: false,
-    maxE: Math.round(maxE * 10) / 10,
   };
 };
 
@@ -126,10 +157,10 @@ const RosaVientos = ({ size = 80 }) => {
         return <polygon key={deg} points={`${tx},${ty} ${b1x},${b1y} ${c},${c} ${b2x},${b2y}`} fill="#bbb" stroke="#999" strokeWidth="0.3"/>;
       })}
       <circle cx={c} cy={c} r={r*0.09} fill="#c00" stroke="#800" strokeWidth="0.8"/>
-      <text x={c}     y={c-r+13}    textAnchor="middle" fontSize={r*0.28} fontWeight="bold" fill="#c00" fontFamily="Arial">N</text>
-      <text x={c}     y={c+r-3}     textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">S</text>
-      <text x={c+r-5} y={c+r*0.08}  textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">E</text>
-      <text x={c-r+5} y={c+r*0.08}  textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">O</text>
+      <text x={c}     y={c-r+13}   textAnchor="middle" fontSize={r*0.28} fontWeight="bold" fill="#c00" fontFamily="Arial">N</text>
+      <text x={c}     y={c+r-3}    textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">S</text>
+      <text x={c+r-5} y={c+r*0.08} textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">E</text>
+      <text x={c-r+5} y={c+r*0.08} textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">O</text>
     </svg>
   );
 };
@@ -143,7 +174,6 @@ const TerrenoCroquis = ({ norteM, surM, esteM, oesteM, norteCol, surCol, esteCol
   const geo = solveQuad(norteM, surM, esteM, oesteM);
   const { TL: tl, TR: tr, BL: bl, BR: br, valid } = geo;
 
-  // Bounding box
   const allX = [tl.x, tr.x, bl.x, br.x];
   const allY = [tl.y, tr.y, bl.y, br.y];
   const minX = Math.min(...allX), maxX = Math.max(...allX);
@@ -165,10 +195,9 @@ const TerrenoCroquis = ({ norteM, surM, esteM, oesteM, norteCol, surCol, esteCol
   const midS = {x:(BL.x+BR.x)/2, y:(BL.y+BR.y)/2};
   const midE = {x:(TR.x+BR.x)/2, y:(TR.y+BR.y)/2};
   const midO = {x:(TL.x+BL.x)/2, y:(TL.y+BL.y)/2};
+  const trunc = (s,n) => s&&s.length>n ? s.slice(0,n)+'…':(s||'');
 
-  const trunc = (s, n) => s && s.length > n ? s.slice(0,n)+'…' : (s||'');
-
-  const scaleBarM = Math.max(Math.round(Math.max(norteM, surM)/4/5)*5, 5);
+  const scaleBarM = Math.max(Math.round(Math.max(norteM,surM)/4/5)*5, 5);
   const scaleBarPx = scaleBarM * scale;
   const scaleY = svgH - 18;
 
@@ -189,34 +218,39 @@ const TerrenoCroquis = ({ norteM, surM, esteM, oesteM, norteCol, surCol, esteCol
       <rect width={svgW} height={svgH} fill="url(#gr)"/>
       <polygon points={pts} fill="rgba(200,225,245,0.55)"/>
       <rect width={svgW} height={svgH} fill="url(#ht)" clipPath="url(#tc5)"/>
-      <polygon points={pts} fill="none" stroke={valid ? "#003a6e" : "#e67e00"} strokeWidth="2.4" strokeDasharray={valid ? "none" : "6,3"}/>
+      <polygon points={pts} fill="none" stroke={valid?"#003a6e":"#e67e00"} strokeWidth="2.4"
+        strokeDasharray={valid?"none":"6,3"}/>
 
       {/* Norte en rojo */}
       <line x1={TL.x} y1={TL.y} x2={TR.x} y2={TR.y} stroke="#c00" strokeWidth="2.6"/>
 
+      {/* Vértices */}
       {[TL,TR,BR,BL].map((p,i) =>
-        <circle key={i} cx={p.x} cy={p.y} r="4.5" fill={valid?"#003a6e":"#e67e00"} stroke="white" strokeWidth="1.2"/>
+        <circle key={i} cx={p.x} cy={p.y} r="4.5"
+          fill={valid?"#003a6e":"#e67e00"} stroke="white" strokeWidth="1.2"/>
       )}
 
-      {/* Advertencia si medidas inconsistentes */}
+      {/* Advertencia */}
       {!valid && (
         <g>
-          <rect x={svgW/2-130} y={6} width={260} height={22} rx="4" fill="#fff3cd" stroke="#e67e00" strokeWidth="1.2"/>
-          <text x={svgW/2} y={21} textAnchor="middle" fontSize="9.5" fill="#a05000" fontFamily="Arial" fontWeight="bold">
+          <rect x={svgW/2-140} y={6} width={280} height={22} rx="4"
+            fill="#fff3cd" stroke="#e67e00" strokeWidth="1.2"/>
+          <text x={svgW/2} y={21} textAnchor="middle" fontSize="9.5"
+            fill="#a05000" fontFamily="Arial" fontWeight="bold">
             ⚠ Medidas inconsistentes — representación aproximada
           </text>
         </g>
       )}
 
-      {/* Norte */}
+      {/* Etiqueta Norte */}
       <text x={midN.x} y={midN.y-26} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#c00" fontFamily="Arial">{norteM.toFixed(2)} m</text>
       <text x={midN.x} y={midN.y-13} textAnchor="middle" fontSize="8.5" fill="#444" fontFamily="Arial">{trunc(norteCol,26)}</text>
       {/* Sur */}
       <text x={midS.x} y={midS.y+17} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#333" fontFamily="Arial">{surM.toFixed(2)} m</text>
       <text x={midS.x} y={midS.y+29} textAnchor="middle" fontSize="8.5" fill="#444" fontFamily="Arial">{trunc(surCol,26)}</text>
       {/* Este */}
-      <text x={midE.x+9} y={midE.y-5}  fontSize="10" fontWeight="bold" fill="#333" fontFamily="Arial">{esteM.toFixed(2)} m</text>
-      <text x={midE.x+9} y={midE.y+8}  fontSize="8"  fill="#444" fontFamily="Arial">{trunc(esteCol,16)}</text>
+      <text x={midE.x+9} y={midE.y-5} fontSize="10" fontWeight="bold" fill="#333" fontFamily="Arial">{esteM.toFixed(2)} m</text>
+      <text x={midE.x+9} y={midE.y+8} fontSize="8"  fill="#444" fontFamily="Arial">{trunc(esteCol,16)}</text>
       {/* Oeste */}
       <text x={midO.x-9} y={midO.y-5} textAnchor="end" fontSize="10" fontWeight="bold" fill="#333" fontFamily="Arial">{oesteM.toFixed(2)} m</text>
       <text x={midO.x-9} y={midO.y+8} textAnchor="end" fontSize="8"  fill="#444" fontFamily="Arial">{trunc(oesteCol,16)}</text>
@@ -266,7 +300,6 @@ const App = () => {
     const file=e.target.files[0]; if(!file)return;
     const reader=new FileReader(); reader.onload=ev=>setImagenSrc(ev.target.result); reader.readAsDataURL(file);
   };
-
   const toM = val=>{
     const v=parseFloat(val)||0;
     if(form.unidadMedida==='varas') return v*0.838;
@@ -276,8 +309,6 @@ const App = () => {
   const norteM=toM(form.norteMedida), surM=toM(form.surMedida);
   const esteM=toM(form.esteMedida),   oesteM=toM(form.oesteMedida);
   const areaM2=((norteM+surM)/2)*((esteM+oesteM)/2);
-
-  // Validar geometría en tiempo real para mostrar alerta en formulario
   const geoCheck = solveQuad(norteM, surM, esteM, oesteM);
 
   const handlePrint = async ()=>{
@@ -297,7 +328,6 @@ const App = () => {
   const tdH={border:'1px solid #000',padding:'2px 3px',fontWeight:'bold',background:'#e8eef5',fontSize:'7.5px',whiteSpace:'nowrap'};
   const tdV={border:'1px solid #000',padding:'2px 3px',fontSize:'7.5px'};
   const thH={background:'#003a6e',color:'white',padding:'3px 4px',textAlign:'center',fontSize:'7px',fontWeight:'bold'};
-
   const CROQUIS_W=540, CROQUIS_H=700;
 
   return (
@@ -310,7 +340,6 @@ const App = () => {
           <p style={{margin:'3px 0 0',fontSize:'11px',opacity:0.8}}>Complete los datos — el plano se actualiza en tiempo real</p>
         </div>
         <div style={{padding:'20px'}}>
-
           <h3 style={sec}>Identificación del Predio</h3>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
             <div><label style={lbl}>Clave Catastral</label><input style={inp} name="claveCatastral" value={form.claveCatastral} onChange={handleChange}/></div>
@@ -351,14 +380,10 @@ const App = () => {
 
           <h3 style={sec}>Medidas y Colindancias</h3>
 
-          {/* Alerta de geometría inconsistente */}
           {!geoCheck.valid && (
             <div style={{background:'#fff3cd',border:'1.5px solid #e67e00',borderRadius:'6px',padding:'10px 14px',marginBottom:'14px',fontSize:'12px',color:'#7d4000'}}>
-              <strong>⚠ Medidas geométricamente inconsistentes</strong><br/>
-              Con Norte={norteM.toFixed(1)}m, Sur={surM.toFixed(1)}m y Oeste={oesteM.toFixed(1)}m,
-              el lado <strong>Este máximo posible</strong> es aproximadamente <strong>{geoCheck.maxE} m</strong>.
-              El valor actual ({esteM.toFixed(1)}m) excede ese límite.
-              El croquis mostrará una aproximación visual (línea naranja punteada).
+              <strong>⚠ Las medidas no forman un cuadrilátero válido convexo</strong> — el croquis mostrará
+              una representación aproximada. Revise que los lados sean geométricamente compatibles.
             </div>
           )}
 
@@ -384,7 +409,7 @@ const App = () => {
               {label:'➡ ESTE (Oriente)',med:'esteMedida',col:'esteColindancia',color:'#555'},
               {label:'⬅ OESTE (Poniente)',med:'oesteMedida',col:'oesteColindancia',color:'#555'},
             ].map(({label,med,col,color})=>(
-              <div key={med} style={{border:`1px solid ${med==='esteMedida'&&!geoCheck.valid?'#e67e00':'#d0dcea'}`,borderRadius:'5px',padding:'10px',background:med==='esteMedida'&&!geoCheck.valid?'#fff8f0':'#f6f9ff'}}>
+              <div key={med} style={{border:'1px solid #d0dcea',borderRadius:'5px',padding:'10px',background:'#f6f9ff'}}>
                 <div style={{fontWeight:'bold',color,fontSize:'12px',marginBottom:'8px'}}>{label}</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:'8px'}}>
                   <div><label style={{...lbl,fontSize:'10px'}}>Medida ({form.unidadMedida})</label><input style={inp} name={med} value={form[med]} onChange={handleChange}/></div>
@@ -420,7 +445,6 @@ const App = () => {
         <div style={{background:'#004a8f',color:'white',padding:'8px 16px',borderRadius:'4px 4px 0 0',fontSize:'12px',fontWeight:'bold'}}>
           📄 VISTA PREVIA EN TIEMPO REAL — Así quedará el PDF
         </div>
-
         <div ref={printRef} style={{width:'816px',height:'1056px',background:'white',padding:'14px 14px 10px',boxSizing:'border-box',fontFamily:'Arial,sans-serif',fontSize:'9px',color:'#000',overflow:'hidden'}}>
 
           {/* Encabezado */}
@@ -458,8 +482,7 @@ const App = () => {
           </div>
 
           <div style={{display:'grid',gridTemplateColumns:'220px 1fr',gap:'6px',height:'888px'}}>
-
-            {/* Izquierda */}
+            {/* Columna izquierda */}
             <div style={{display:'flex',flexDirection:'column',gap:'4px',overflow:'hidden'}}>
               <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead><tr><th colSpan="2" style={thH}>DATOS DEL PROPIETARIO</th></tr></thead>
@@ -525,7 +548,6 @@ const App = () => {
                 <div style={{fontWeight:'bold',marginTop:'4px',fontSize:'6px'}}>FOLIO ÚNICO:</div>
                 <div style={{fontWeight:'bold',fontSize:'9px',letterSpacing:'1px',color:'#003a6e'}}>{form.claveCatastral}</div>
               </div>
-              {/* Foto */}
               <div style={{height:'105px',flexShrink:0,border:'2px dashed #90a4ae',borderRadius:'4px',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',background:'#f8f9fa'}}>
                 {imagenSrc
                   ? <img src={imagenSrc} alt="terreno" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
@@ -534,7 +556,7 @@ const App = () => {
               </div>
             </div>
 
-            {/* Derecha: croquis */}
+            {/* Columna derecha: croquis */}
             <div style={{border:'2px solid #000',background:'#fafcff',display:'flex',flexDirection:'column'}}>
               <div style={{textAlign:'center',fontWeight:'bold',fontSize:'7.5px',background:'#003a6e',color:'white',padding:'3px 4px',flexShrink:0}}>
                 CROQUIS DEL PREDIO — REPRESENTACIÓN GRÁFICA PROPORCIONAL
@@ -552,7 +574,6 @@ const App = () => {
                 />
               </div>
             </div>
-
           </div>
 
           <div style={{marginTop:'4px',borderTop:'2px solid #000',paddingTop:'3px',display:'flex',justifyContent:'space-between',fontSize:'6.5px',color:'#333'}}>
