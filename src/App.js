@@ -42,186 +42,151 @@ const MUNICIPIOS = [
   'Zacazonapan','Zacualpan','Zinacantepec','Zumpahuacán','Zumpango'
 ];
 
-// ── Rosa de vientos mejorada ──────────────────────────────────────────────────
-const RosaVientos = ({ x = 0, y = 0, r = 36 }) => {
-  const c = r;
+/* ── Rosa de vientos ─────────────────────────────────────────────────────── */
+const RosaVientos = ({ size = 80 }) => {
+  const c = size / 2;
+  const r = size / 2 - 2;
   return (
-    <g transform={`translate(${x}, ${y})`}>
-      {/* Círculo exterior */}
-      <circle cx={c} cy={c} r={r} fill="white" stroke="#222" strokeWidth="1.8"/>
-      <circle cx={c} cy={c} r={r * 0.55} fill="none" stroke="#aaa" strokeWidth="0.7"/>
-
-      {/* Puntas de la rosa – 8 direcciones */}
-      {/* N grande negro */}
-      <polygon points={`${c},${c - r + 2} ${c + r*0.18},${c} ${c},${c - r*0.45}`} fill="#c00"/>
-      <polygon points={`${c},${c - r + 2} ${c - r*0.18},${c} ${c},${c - r*0.45}`} fill="#900"/>
-      {/* S blanco */}
-      <polygon points={`${c},${c + r - 2} ${c + r*0.18},${c} ${c},${c + r*0.45}`} fill="white" stroke="#444" strokeWidth="0.5"/>
-      <polygon points={`${c},${c + r - 2} ${c - r*0.18},${c} ${c},${c + r*0.45}`} fill="#ddd" stroke="#444" strokeWidth="0.5"/>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} xmlns="http://www.w3.org/2000/svg">
+      <circle cx={c} cy={c} r={r} fill="white" stroke="#222" strokeWidth="1.5"/>
+      <circle cx={c} cy={c} r={r * 0.45} fill="none" stroke="#bbb" strokeWidth="0.8"/>
+      {/* N rojo */}
+      <polygon points={`${c},${c-r+3} ${c+r*0.2},${c} ${c},${c-r*0.42}`} fill="#c00"/>
+      <polygon points={`${c},${c-r+3} ${c-r*0.2},${c} ${c},${c-r*0.42}`} fill="#900"/>
+      {/* S */}
+      <polygon points={`${c},${c+r-3} ${c+r*0.2},${c} ${c},${c+r*0.42}`} fill="white" stroke="#555" strokeWidth="0.6"/>
+      <polygon points={`${c},${c+r-3} ${c-r*0.2},${c} ${c},${c+r*0.42}`} fill="#ddd" stroke="#555" strokeWidth="0.6"/>
       {/* E */}
-      <polygon points={`${c + r - 2},${c} ${c},${c + r*0.18} ${c + r*0.45},${c}`} fill="white" stroke="#444" strokeWidth="0.5"/>
-      <polygon points={`${c + r - 2},${c} ${c},${c - r*0.18} ${c + r*0.45},${c}`} fill="#ddd" stroke="#444" strokeWidth="0.5"/>
+      <polygon points={`${c+r-3},${c} ${c},${c+r*0.2} ${c+r*0.42},${c}`} fill="white" stroke="#555" strokeWidth="0.6"/>
+      <polygon points={`${c+r-3},${c} ${c},${c-r*0.2} ${c+r*0.42},${c}`} fill="#ddd" stroke="#555" strokeWidth="0.6"/>
       {/* O */}
-      <polygon points={`${c - r + 2},${c} ${c},${c + r*0.18} ${c - r*0.45},${c}`} fill="white" stroke="#444" strokeWidth="0.5"/>
-      <polygon points={`${c - r + 2},${c} ${c},${c - r*0.18} ${c - r*0.45},${c}`} fill="#ddd" stroke="#444" strokeWidth="0.5"/>
-
-      {/* Puntas diagonales pequeñas */}
+      <polygon points={`${c-r+3},${c} ${c},${c+r*0.2} ${c-r*0.42},${c}`} fill="white" stroke="#555" strokeWidth="0.6"/>
+      <polygon points={`${c-r+3},${c} ${c},${c-r*0.2} ${c-r*0.42},${c}`} fill="#ddd" stroke="#555" strokeWidth="0.6"/>
+      {/* Puntas diagonales */}
       {[45,135,225,315].map(deg => {
-        const rad = (deg * Math.PI) / 180;
-        const tipX = c + Math.cos(rad) * (r - 3);
-        const tipY = c + Math.sin(rad) * (r - 3);
-        const b1X = c + Math.cos(rad - 0.4) * r * 0.38;
-        const b1Y = c + Math.sin(rad - 0.4) * r * 0.38;
-        const b2X = c + Math.cos(rad + 0.4) * r * 0.38;
-        const b2Y = c + Math.sin(rad + 0.4) * r * 0.38;
-        return <polygon key={deg} points={`${tipX},${tipY} ${b1X},${b1Y} ${c},${c} ${b2X},${b2Y}`} fill="#bbb" stroke="#888" strokeWidth="0.3"/>;
+        const rad = deg * Math.PI / 180;
+        const tx = c + Math.cos(rad) * (r-4);
+        const ty = c + Math.sin(rad) * (r-4);
+        const b1x = c + Math.cos(rad-0.45) * r*0.35;
+        const b1y = c + Math.sin(rad-0.45) * r*0.35;
+        const b2x = c + Math.cos(rad+0.45) * r*0.35;
+        const b2y = c + Math.sin(rad+0.45) * r*0.35;
+        return <polygon key={deg} points={`${tx},${ty} ${b1x},${b1y} ${c},${c} ${b2x},${b2y}`} fill="#bbb" stroke="#999" strokeWidth="0.3"/>;
       })}
-
-      {/* Círculo central */}
-      <circle cx={c} cy={c} r={r * 0.1} fill="#c00" stroke="#800" strokeWidth="0.8"/>
-
-      {/* Letras cardinales */}
-      <text x={c} y={c - r + 10} textAnchor="middle" fontSize={r * 0.32} fontWeight="bold" fill="#c00" fontFamily="Arial">N</text>
-      <text x={c} y={c + r - 2}  textAnchor="middle" fontSize={r * 0.25} fill="#333" fontFamily="Arial">S</text>
-      <text x={c + r - 5} y={c + r*0.09} textAnchor="middle" fontSize={r * 0.25} fill="#333" fontFamily="Arial">E</text>
-      <text x={c - r + 5} y={c + r*0.09} textAnchor="middle" fontSize={r * 0.25} fill="#333" fontFamily="Arial">O</text>
-    </g>
-  );
-};
-
-// ── Croquis del terreno ───────────────────────────────────────────────────────
-const TerrenoCroquis = ({ norteM, surM, esteM, oesteM, norteCol, surCol, esteCol, oesteCol, usoSuelo, areaM2, imagenSrc }) => {
-  const PAD_H = 70;   // espacio horizontal para etiquetas
-  const PAD_V = 58;   // espacio vertical para etiquetas
-  const MAX_W = 280;
-  const MAX_H = 230;
-
-  const safe = v => Math.max(v, 0.5);
-  const maxHoriz = Math.max(safe(norteM), safe(surM));
-  const maxVert  = Math.max(safe(esteM),  safe(oesteM));
-  const scale    = Math.min(MAX_W / maxHoriz, MAX_H / maxVert, 16);
-
-  // Escalar medidas
-  const nW = safe(norteM)  * scale;
-  const sW = safe(surM)    * scale;
-  const eH = safe(esteM)   * scale;
-  const oH = safe(oesteM)  * scale;
-
-  // Anchura total del dibujo (el lado más largo de norte o sur)
-  const drawW = Math.max(nW, sW);
-  const drawH = Math.max(eH, oH);
-
-  // Centrar horizontalmente Norte y Sur
-  const nOffset = (drawW - nW) / 2;
-  const sOffset = (drawW - sW) / 2;
-
-  // Cuatro vértices: TL, TR, BR, BL
-  // TL y TR en la parte superior; la altura izquierda es oesteM y la derecha esteM
-  const TL = { x: PAD_H + nOffset,       y: PAD_V + (drawH - oH) };
-  const TR = { x: PAD_H + nOffset + nW,  y: PAD_V + (drawH - eH) };
-  const BR = { x: PAD_H + sOffset + sW,  y: PAD_V + drawH };
-  const BL = { x: PAD_H + sOffset,       y: PAD_V + drawH };
-
-  const points = `${TL.x},${TL.y} ${TR.x},${TR.y} ${BR.x},${BR.y} ${BL.x},${BL.y}`;
-
-  // Centroide
-  const cx = (TL.x + TR.x + BR.x + BL.x) / 4;
-  const cy = (TL.y + TR.y + BR.y + BL.y) / 4;
-
-  // Puntos medios de cada lado
-  const midN = { x: (TL.x + TR.x) / 2, y: (TL.y + TR.y) / 2 };
-  const midS = { x: (BL.x + BR.x) / 2, y: (BL.y + BR.y) / 2 };
-  const midE = { x: (TR.x + BR.x) / 2, y: (TR.y + BR.y) / 2 };
-  const midO = { x: (TL.x + BL.x) / 2, y: (TL.y + BL.y) / 2 };
-
-  const svgW = drawW + PAD_H * 2;
-  const svgH = drawH + PAD_V * 2;
-
-  const trunc = (s, n) => s && s.length > n ? s.slice(0, n) + '…' : (s || '');
-
-  // Caja de imagen (esquina inferior izquierda del croquis)
-  const imgBoxX = PAD_H - 62;
-  const imgBoxY = PAD_V + drawH - 50;
-
-  return (
-    <svg viewBox={`0 0 ${svgW} ${svgH}`} width={svgW} height={svgH}
-      style={{ display: 'block', margin: '0 auto', maxWidth: '100%' }}
-      xmlns="http://www.w3.org/2000/svg">
-
-      <defs>
-        <pattern id="grid" width="12" height="12" patternUnits="userSpaceOnUse">
-          <path d="M12 0L0 0 0 12" fill="none" stroke="#dde3ea" strokeWidth="0.4"/>
-        </pattern>
-        <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="7" stroke="rgba(0,74,143,0.08)" strokeWidth="4"/>
-        </pattern>
-        <clipPath id="tc2"><polygon points={points}/></clipPath>
-      </defs>
-
-      {/* Fondo cuadriculado */}
-      <rect width={svgW} height={svgH} fill="url(#grid)"/>
-
-      {/* Relleno del terreno */}
-      <polygon points={points} fill="rgba(200,225,245,0.5)"/>
-      <rect x="0" y="0" width={svgW} height={svgH} fill="url(#hatch)" clipPath="url(#tc2)"/>
-
-      {/* Contorno del terreno */}
-      <polygon points={points} fill="none" stroke="#000" strokeWidth="2.2"/>
-
-      {/* Vértices */}
-      {[TL, TR, BR, BL].map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="#003a6e" stroke="white" strokeWidth="1"/>
-      ))}
-
-      {/* ─ Línea norte en rojo para orientación ─ */}
-      <line x1={TL.x} y1={TL.y} x2={TR.x} y2={TR.y} stroke="#c00" strokeWidth="2.2"/>
-
-      {/* ─ Cotas con flechas ─ */}
-      {/* Norte */}
-      <line x1={TL.x} y1={midN.y - 18} x2={TR.x} y2={midN.y - 18} stroke="#c00" strokeWidth="0.8" markerEnd="url(#arr)" markerStart="url(#arr)"/>
-      <text x={midN.x} y={midN.y - 22} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#c00">{norteM.toFixed(2)} m</text>
-      <text x={midN.x} y={midN.y - 12} textAnchor="middle" fontSize="7" fill="#555">{trunc(norteCol, 22)}</text>
-
-      {/* Sur */}
-      <line x1={BL.x} y1={midS.y + 18} x2={BR.x} y2={midS.y + 18} stroke="#444" strokeWidth="0.8"/>
-      <text x={midS.x} y={midS.y + 14} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#000">{surM.toFixed(2)} m</text>
-      <text x={midS.x} y={midS.y + 24} textAnchor="middle" fontSize="7" fill="#555">{trunc(surCol, 22)}</text>
-
-      {/* Este (derecha) */}
-      <text x={midE.x + 6} y={midE.y - 4} fontSize="8.5" fontWeight="bold" fill="#000">{esteM.toFixed(2)} m</text>
-      <text x={midE.x + 6} y={midE.y + 6} fontSize="7" fill="#555">{trunc(esteCol, 14)}</text>
-
-      {/* Oeste (izquierda) */}
-      <text x={midO.x - 6} y={midO.y - 4} textAnchor="end" fontSize="8.5" fontWeight="bold" fill="#000">{oesteM.toFixed(2)} m</text>
-      <text x={midO.x - 6} y={midO.y + 6} textAnchor="end" fontSize="7" fill="#555">{trunc(oesteCol, 14)}</text>
-
-      {/* ─ Texto central ─ */}
-      <text x={cx} y={cy - 12} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#003a6e">TERRENO</text>
-      <text x={cx} y={cy + 4}  textAnchor="middle" fontSize="13" fontWeight="bold" fill="#000">{areaM2.toFixed(2)} m²</text>
-      <text x={cx} y={cy + 17} textAnchor="middle" fontSize="8"  fill="#555">{usoSuelo}</text>
-
-      {/* ─ Rosa de vientos (esquina superior derecha) ─ */}
-      <RosaVientos x={svgW - 82} y={2} r={36}/>
-
-      {/* ─ Caja de imagen (esquina inferior izquierda) ─ */}
-      <rect x={4} y={svgH - 62} width={90} height={58} rx="3"
-        fill="white" stroke="#888" strokeWidth="1" strokeDasharray="4,2"/>
-      {imagenSrc
-        ? <image href={imagenSrc} x={4} y={svgH - 62} width={90} height={58} preserveAspectRatio="xMidYMid meet"/>
-        : <>
-            <text x={49} y={svgH - 38} textAnchor="middle" fontSize="7" fill="#aaa">Foto / croquis</text>
-            <text x={49} y={svgH - 28} textAnchor="middle" fontSize="7" fill="#aaa">del terreno</text>
-            <text x={49} y={svgH - 16} textAnchor="middle" fontSize="18" fill="#ccc">📷</text>
-          </>
-      }
-      <rect x={4} y={svgH - 62} width={90} height={58} rx="3"
-        fill="none" stroke="#888" strokeWidth="1" strokeDasharray="4,2"/>
-
+      <circle cx={c} cy={c} r={r*0.09} fill="#c00" stroke="#800" strokeWidth="0.8"/>
+      {/* Letras */}
+      <text x={c} y={c-r+13} textAnchor="middle" fontSize={r*0.28} fontWeight="bold" fill="#c00" fontFamily="Arial">N</text>
+      <text x={c} y={c+r-3}  textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">S</text>
+      <text x={c+r-5} y={c+r*0.08} textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">E</text>
+      <text x={c-r+5} y={c+r*0.08} textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">O</text>
     </svg>
   );
 };
 
-// ── Componente principal ──────────────────────────────────────────────────────
+/* ── Croquis del terreno ─────────────────────────────────────────────────── */
+const TerrenoCroquis = ({ norteM, surM, esteM, oesteM, norteCol, surCol, esteCol, oesteCol, usoSuelo, areaM2, svgW, svgH }) => {
+  const PAD_H = 75;
+  const PAD_V = 55;
+  const drawW = svgW - PAD_H * 2;
+  const drawH = svgH - PAD_V * 2 - 30; // 30 para escala abajo
+
+  const safe = v => Math.max(v, 0.5);
+  const maxHoriz = Math.max(safe(norteM), safe(surM));
+  const maxVert  = Math.max(safe(esteM),  safe(oesteM));
+  const scale    = Math.min(drawW / maxHoriz, drawH / maxVert);
+
+  const nW = safe(norteM) * scale;
+  const sW = safe(surM)   * scale;
+  const eH = safe(esteM)  * scale;
+  const oH = safe(oesteM) * scale;
+
+  const totalW = Math.max(nW, sW);
+  const totalH = Math.max(eH, oH);
+
+  const nOff = (totalW - nW) / 2;
+  const sOff = (totalW - sW) / 2;
+
+  const originX = PAD_H + (drawW - totalW) / 2;
+  const originY = PAD_V + (drawH - totalH) / 2;
+
+  const TL = { x: originX + nOff,        y: originY + (totalH - oH) };
+  const TR = { x: originX + nOff + nW,   y: originY + (totalH - eH) };
+  const BR = { x: originX + sOff + sW,   y: originY + totalH };
+  const BL = { x: originX + sOff,        y: originY + totalH };
+
+  const pts = `${TL.x},${TL.y} ${TR.x},${TR.y} ${BR.x},${BR.y} ${BL.x},${BL.y}`;
+  const cx = (TL.x + TR.x + BR.x + BL.x) / 4;
+  const cy = (TL.y + TR.y + BR.y + BL.y) / 4;
+  const midN = { x: (TL.x+TR.x)/2, y: (TL.y+TR.y)/2 };
+  const midS = { x: (BL.x+BR.x)/2, y: (BL.y+BR.y)/2 };
+  const midE = { x: (TR.x+BR.x)/2, y: (TR.y+BR.y)/2 };
+  const midO = { x: (TL.x+BL.x)/2, y: (TL.y+BL.y)/2 };
+
+  const trunc = (s, n) => s && s.length > n ? s.slice(0,n)+'…' : (s||'');
+
+  // Escala gráfica
+  const scaleBarM = Math.round(maxHoriz / 4 / 5) * 5 || 5;
+  const scaleBarPx = scaleBarM * scale;
+  const scaleX = originX;
+  const scaleY = svgH - 20;
+
+  return (
+    <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
+      style={{ display:'block', width:'100%', height:'100%' }}
+      xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid2" width="14" height="14" patternUnits="userSpaceOnUse">
+          <path d="M14 0L0 0 0 14" fill="none" stroke="#dde3ea" strokeWidth="0.4"/>
+        </pattern>
+        <pattern id="hatch2" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(0,74,143,0.07)" strokeWidth="5"/>
+        </pattern>
+        <clipPath id="tc3"><polygon points={pts}/></clipPath>
+      </defs>
+
+      <rect width={svgW} height={svgH} fill="url(#grid2)"/>
+      <polygon points={pts} fill="rgba(200,225,245,0.55)"/>
+      <rect width={svgW} height={svgH} fill="url(#hatch2)" clipPath="url(#tc3)"/>
+      <polygon points={pts} fill="none" stroke="#003a6e" strokeWidth="2.2"/>
+
+      {/* Línea norte en rojo */}
+      <line x1={TL.x} y1={TL.y} x2={TR.x} y2={TR.y} stroke="#c00" strokeWidth="2.4"/>
+
+      {/* Vértices */}
+      {[TL,TR,BR,BL].map((p,i) => <circle key={i} cx={p.x} cy={p.y} r="4" fill="#003a6e" stroke="white" strokeWidth="1.2"/>)}
+
+      {/* Medidas y colindancias – NORTE */}
+      <text x={midN.x} y={midN.y - 24} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#c00" fontFamily="Arial">{norteM.toFixed(2)} m</text>
+      <text x={midN.x} y={midN.y - 13} textAnchor="middle" fontSize="8"  fill="#444" fontFamily="Arial">{trunc(norteCol,24)}</text>
+
+      {/* SUR */}
+      <text x={midS.x} y={midS.y + 16} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#333" fontFamily="Arial">{surM.toFixed(2)} m</text>
+      <text x={midS.x} y={midS.y + 27} textAnchor="middle" fontSize="8"  fill="#444" fontFamily="Arial">{trunc(surCol,24)}</text>
+
+      {/* ESTE */}
+      <text x={midE.x + 8} y={midE.y - 5} fontSize="9.5" fontWeight="bold" fill="#333" fontFamily="Arial">{esteM.toFixed(2)} m</text>
+      <text x={midE.x + 8} y={midE.y + 7} fontSize="7.5" fill="#444" fontFamily="Arial">{trunc(esteCol,16)}</text>
+
+      {/* OESTE */}
+      <text x={midO.x - 8} y={midO.y - 5} textAnchor="end" fontSize="9.5" fontWeight="bold" fill="#333" fontFamily="Arial">{oesteM.toFixed(2)} m</text>
+      <text x={midO.x - 8} y={midO.y + 7} textAnchor="end" fontSize="7.5" fill="#444" fontFamily="Arial">{trunc(oesteCol,16)}</text>
+
+      {/* Texto central */}
+      <text x={cx} y={cy - 14} textAnchor="middle" fontSize="14" fontWeight="bold" fill="#003a6e" fontFamily="Arial">TERRENO</text>
+      <text x={cx} y={cy + 5}  textAnchor="middle" fontSize="15" fontWeight="bold" fill="#000"    fontFamily="Arial">{areaM2.toFixed(2)} m²</text>
+      <text x={cx} y={cy + 20} textAnchor="middle" fontSize="9"  fill="#555"                      fontFamily="Arial">{usoSuelo}</text>
+
+      {/* Escala gráfica */}
+      <rect x={scaleX} y={scaleY - 6} width={scaleBarPx} height={7} fill="none" stroke="#333" strokeWidth="1"/>
+      <rect x={scaleX} y={scaleY - 6} width={scaleBarPx/2} height={7} fill="#333"/>
+      <text x={scaleX} y={scaleY + 8} fontSize="7" fill="#333" fontFamily="Arial">0</text>
+      <text x={scaleX + scaleBarPx/2} y={scaleY + 8} textAnchor="middle" fontSize="7" fill="#333" fontFamily="Arial">{scaleBarM/2}m</text>
+      <text x={scaleX + scaleBarPx}   y={scaleY + 8} textAnchor="middle" fontSize="7" fill="#333" fontFamily="Arial">{scaleBarM}m</text>
+    </svg>
+  );
+};
+
+/* ── App principal ───────────────────────────────────────────────────────── */
 const App = () => {
   const printRef = useRef();
 
@@ -240,16 +205,16 @@ const App = () => {
     norteColindancia: 'CALLE SIN NOMBRE',
     surMedida: '12.00',
     surColindancia: 'TERRENO COLINDANTE',
-    esteMedida: '23.00',
+    esteMedida: '30.00',
     esteColindancia: 'CASA HABITACIÓN',
     oesteMedida: '30.00',
     oesteColindancia: 'AV. PRINCIPAL',
     fecha: new Date().toLocaleDateString('es-MX'),
   });
 
-  const [munQuery, setMunQuery] = useState('Tlalnepantla de Baz');
-  const [munSug, setMunSug]     = useState([]);
-  const [showMun, setShowMun]   = useState(false);
+  const [munQuery,  setMunQuery]  = useState('Tlalnepantla de Baz');
+  const [munSug,    setMunSug]    = useState([]);
+  const [showMun,   setShowMun]   = useState(false);
   const [imagenSrc, setImagenSrc] = useState(null);
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -258,12 +223,11 @@ const App = () => {
     const val = e.target.value;
     setMunQuery(val);
     if (val.length > 0) {
-      setMunSug(MUNICIPIOS.filter(m => m.toLowerCase().includes(val.toLowerCase())).slice(0, 8));
+      setMunSug(MUNICIPIOS.filter(m => m.toLowerCase().includes(val.toLowerCase())).slice(0,8));
       setShowMun(true);
     } else setShowMun(false);
   };
-
-  const selectMun = m => { setMunQuery(m); setForm(f => ({ ...f, municipio: m.toUpperCase() })); setShowMun(false); };
+  const selectMun = m => { setMunQuery(m); setForm(f => ({...f, municipio: m.toUpperCase()})); setShowMun(false); };
 
   const handleImagen = e => {
     const file = e.target.files[0];
@@ -290,38 +254,50 @@ const App = () => {
     const el = printRef.current;
     if (!el) return;
     try {
-      const canvas = await html2canvas(el, { scale: 3, useCORS: true, backgroundColor: '#ffffff', logging: false });
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+      });
       const img = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'letter');
-      const pw = pdf.internal.pageSize.getWidth();
-      const ph = pdf.internal.pageSize.getHeight();
+      const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+      const pw  = pdf.internal.pageSize.getWidth();
+      const ph  = pdf.internal.pageSize.getHeight();
       pdf.addImage(img, 'PNG', 0, 0, pw, ph);
       pdf.save('Plano_Catastral_' + form.claveCatastral + '.pdf');
     } catch (err) { console.error(err); }
   };
 
+  /* estilos reutilizables */
   const lbl = { fontWeight:'bold', fontSize:'11px', marginBottom:'3px', display:'block', color:'#333' };
   const inp = { padding:'7px 9px', border:'1px solid #bbb', borderRadius:'3px', fontSize:'13px', width:'100%', boxSizing:'border-box', fontFamily:'Arial' };
   const sec = { color:'#004a8f', borderBottom:'2px solid #004a8f', paddingBottom:'4px', marginBottom:'12px', marginTop:'18px', fontSize:'13px', fontWeight:'bold' };
-  const tdH = { border:'1px solid #000', padding:'2px 3px', fontWeight:'bold', background:'#e8eef5', fontSize:'8px', whiteSpace:'nowrap' };
-  const tdV = { border:'1px solid #000', padding:'2px 3px', fontSize:'8px' };
+  const tdH = { border:'1px solid #000', padding:'2px 3px', fontWeight:'bold', background:'#e8eef5', fontSize:'7.5px', whiteSpace:'nowrap' };
+  const tdV = { border:'1px solid #000', padding:'2px 3px', fontSize:'7.5px' };
   const thH = { background:'#003a6e', color:'white', padding:'3px 4px', textAlign:'center', fontSize:'7px', fontWeight:'bold' };
+
+  /* dimensiones del croquis en px para la vista previa */
+  const CROQUIS_W = 430;
+  const CROQUIS_H = 390;
 
   return (
     <div style={{ fontFamily:'Arial, sans-serif', background:'#e8edf3', minHeight:'100vh', padding:'16px' }}>
 
-      {/* ══ FORMULARIO ═══════════════════════════════════════════════════════ */}
+      {/* ══ FORMULARIO ════════════════════════════════════════════════════════ */}
       <div style={{ maxWidth:'950px', margin:'0 auto 20px', background:'white', borderRadius:'6px', overflow:'hidden', boxShadow:'0 2px 10px rgba(0,0,0,0.13)' }}>
         <div style={{ background:'#004a8f', color:'white', padding:'14px 20px' }}>
           <h1 style={{ margin:0, fontSize:'17px' }}>📋 Generador de Plano Catastral — Estado de México</h1>
-          <p style={{ margin:'3px 0 0', fontSize:'11px', opacity:0.8 }}>Complete los datos — el plano se actualiza en tiempo real debajo</p>
+          <p style={{ margin:'3px 0 0', fontSize:'11px', opacity:0.8 }}>Complete los datos — el plano se actualiza en tiempo real</p>
         </div>
         <div style={{ padding:'20px' }}>
 
           <h3 style={sec}>Identificación del Predio</h3>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
             <div><label style={lbl}>Clave Catastral</label>
-              <input style={inp} name="claveCatastral" value={form.claveCatastral} onChange={handleChange} placeholder="15-001-002-003-04"/></div>
+              <input style={inp} name="claveCatastral" value={form.claveCatastral} onChange={handleChange}/></div>
             <div><label style={lbl}>Nombre del Propietario</label>
               <input style={inp} name="propietario" value={form.propietario} onChange={handleChange}/></div>
           </div>
@@ -373,7 +349,8 @@ const App = () => {
               </select></div>
             <div><label style={lbl}>Uso de Suelo</label>
               <select style={inp} name="usoSuelo" value={form.usoSuelo} onChange={handleChange}>
-                {['HABITACIONAL','COMERCIAL','INDUSTRIAL','EQUIPAMIENTO','MIXTO','RÚSTICO','AGRÍCOLA'].map(u => <option key={u} value={u}>{u.charAt(0)+u.slice(1).toLowerCase()}</option>)}
+                {['HABITACIONAL','COMERCIAL','INDUSTRIAL','EQUIPAMIENTO','MIXTO','RÚSTICO','AGRÍCOLA'].map(u =>
+                  <option key={u} value={u}>{u.charAt(0)+u.slice(1).toLowerCase()}</option>)}
               </select></div>
             <div><label style={lbl}>Fecha de Elaboración</label>
               <input style={inp} name="fecha" value={form.fecha} onChange={handleChange}/></div>
@@ -398,9 +375,9 @@ const App = () => {
             ))}
           </div>
 
-          {/* Subir imagen */}
+          {/* Imagen */}
           <div style={{ marginTop:'14px', border:'1px dashed #90a4ae', borderRadius:'5px', padding:'10px 14px', background:'#f9fafb' }}>
-            <label style={{ ...lbl, fontSize:'12px' }}>📷 Imagen opcional del terreno (aparece en el croquis)</label>
+            <label style={{ ...lbl, fontSize:'12px' }}>📷 Imagen opcional del terreno</label>
             <input type="file" accept="image/*" onChange={handleImagen} style={{ fontSize:'12px' }}/>
             {imagenSrc && <img src={imagenSrc} alt="terreno" style={{ marginTop:'8px', maxHeight:'80px', borderRadius:'4px', border:'1px solid #ccc' }}/>}
           </div>
@@ -409,30 +386,42 @@ const App = () => {
           <div style={{ marginTop:'16px', background:'#e8f5e9', border:'2px solid #4caf50', borderRadius:'6px', padding:'12px 18px', display:'flex', alignItems:'center', gap:'14px' }}>
             <span style={{ fontSize:'28px' }}>📐</span>
             <div>
-              <div style={{ fontSize:'12px', color:'#555' }}>Superficie calculada automáticamente (fórmula de trapecio)</div>
+              <div style={{ fontSize:'12px', color:'#555' }}>Superficie calculada automáticamente</div>
               <div style={{ fontSize:'26px', fontWeight:'bold', color:'#1b5e20' }}>{areaM2.toFixed(2)} m²</div>
-              {form.unidadMedida !== 'metros' && <div style={{ fontSize:'10px', color:'#777' }}>Medidas convertidas desde {form.unidadMedida}</div>}
+              {form.unidadMedida !== 'metros' && <div style={{ fontSize:'10px', color:'#777' }}>Convertido desde {form.unidadMedida}</div>}
             </div>
           </div>
 
           <button onClick={handlePrint} style={{ marginTop:'18px', width:'100%', padding:'14px', background:'#004a8f', color:'white', border:'none', cursor:'pointer', fontWeight:'bold', fontSize:'15px', borderRadius:'5px', letterSpacing:'1px' }}>
-            ⬇ GENERAR PLANO CATASTRAL EN PDF
+            ⬇ GENERAR PLANO CATASTRAL EN PDF (Carta)
           </button>
         </div>
       </div>
 
-      {/* ══ VISTA PREVIA = LO QUE SE IMPRIME ════════════════════════════════ */}
+      {/* ══ VISTA PREVIA = EXACTAMENTE LO QUE SE IMPRIME ════════════════════ */}
       <div style={{ maxWidth:'950px', margin:'0 auto' }}>
         <div style={{ background:'#004a8f', color:'white', padding:'8px 16px', borderRadius:'4px 4px 0 0', fontSize:'12px', fontWeight:'bold' }}>
           📄 VISTA PREVIA EN TIEMPO REAL — Así quedará el PDF
         </div>
 
-        <div ref={printRef} style={{ width:'100%', background:'white', padding:'7mm', boxSizing:'border-box', fontFamily:'Arial, sans-serif', fontSize:'9px', color:'#000', border:'2px solid #004a8f' }}>
+        {/* El div de impresión tiene proporción carta (216×279mm) */}
+        <div ref={printRef} style={{
+          width: '816px',   /* 216mm @ 96dpi ≈ 816px */
+          height: '1056px', /* 279mm @ 96dpi ≈ 1056px */
+          background: 'white',
+          padding: '18px 18px 14px',
+          boxSizing: 'border-box',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '9px',
+          color: '#000',
+          overflow: 'hidden',
+          position: 'relative',
+        }}>
 
-          {/* Encabezado */}
-          <div style={{ border:'3px solid #000', padding:'5px 8px', marginBottom:'6px' }}>
+          {/* ── ENCABEZADO ── */}
+          <div style={{ border:'3px solid #000', padding:'5px 8px', marginBottom:'5px' }}>
             <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-              <svg width="52" height="52" viewBox="0 0 56 56" style={{ flexShrink:0 }} xmlns="http://www.w3.org/2000/svg">
+              <svg width="50" height="50" viewBox="0 0 56 56" style={{ flexShrink:0 }} xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="28" cy="28" rx="26" ry="26" fill="#006847" stroke="#000" strokeWidth="1.5"/>
                 <text x="28" y="22" textAnchor="middle" fill="white" fontSize="6" fontWeight="bold">GEM</text>
                 <text x="28" y="31" textAnchor="middle" fill="white" fontSize="5">CATASTRO</text>
@@ -442,15 +431,15 @@ const App = () => {
                 <div style={{ fontSize:'11px', fontWeight:'bold' }}>GOBIERNO DEL ESTADO DE MÉXICO</div>
                 <div style={{ fontSize:'9px', fontWeight:'bold' }}>SECRETARÍA DE FINANZAS</div>
                 <div style={{ fontSize:'8px' }}>DIRECCIÓN GENERAL DE CATASTRO E INFORMACIÓN TERRITORIAL</div>
-                <div style={{ fontSize:'13px', fontWeight:'bold', marginTop:'4px', borderTop:'1px solid #000', paddingTop:'3px' }}>CÉDULA DE DETERMINACIÓN CATASTRAL</div>
+                <div style={{ fontSize:'13px', fontWeight:'bold', marginTop:'3px', borderTop:'1px solid #000', paddingTop:'3px' }}>CÉDULA DE DETERMINACIÓN CATASTRAL</div>
                 <div style={{ fontSize:'8px', color:'#444' }}>PLANO DE LOCALIZACIÓN, MEDIDAS Y COLINDANCIAS</div>
               </div>
               <div style={{ fontSize:'7px', textAlign:'right', flexShrink:0 }}>
-                <div style={{ border:'1px solid #000', padding:'3px 5px', marginBottom:'3px' }}>
+                <div style={{ border:'1px solid #000', padding:'3px 6px', marginBottom:'3px' }}>
                   <div style={{ fontWeight:'bold' }}>FOLIO:</div>
                   <div style={{ fontSize:'8px', fontWeight:'bold' }}>{form.claveCatastral}</div>
                 </div>
-                <div style={{ border:'1px solid #000', padding:'3px 5px' }}>
+                <div style={{ border:'1px solid #000', padding:'3px 6px' }}>
                   <div style={{ fontWeight:'bold' }}>FECHA:</div>
                   <div>{form.fecha}</div>
                 </div>
@@ -458,22 +447,24 @@ const App = () => {
             </div>
           </div>
 
-          {/* Clave destacada */}
-          <div style={{ border:'2px solid #000', padding:'3px', textAlign:'center', marginBottom:'6px', background:'#f0f4f8' }}>
+          {/* ── CLAVE ── */}
+          <div style={{ border:'2px solid #000', padding:'3px', textAlign:'center', marginBottom:'5px', background:'#f0f4f8' }}>
             <span style={{ fontWeight:'bold', fontSize:'9px' }}>CLAVE CATASTRAL: </span>
             <span style={{ fontSize:'14px', fontWeight:'bold', letterSpacing:'3px', color:'#003a6e' }}>{form.claveCatastral}</span>
           </div>
 
-          {/* Cuerpo 3 columnas */}
-          <div style={{ display:'grid', gridTemplateColumns:'195px 1fr 155px', gap:'5px' }}>
+          {/* ── CUERPO: izquierda (tablas+foto) | centro (croquis) | derecha (firmas) ── */}
+          <div style={{ display:'grid', gridTemplateColumns:'185px 1fr 148px', gap:'5px', height:'880px' }}>
 
-            {/* Columna izquierda */}
-            <div>
-              <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:'5px' }}>
+            {/* ── COLUMNA IZQUIERDA: tablas + foto ── */}
+            <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
+
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead><tr><th colSpan="2" style={thH}>DATOS DEL PROPIETARIO</th></tr></thead>
                 <tbody><tr><td style={tdH}>PROPIETARIO:</td><td style={tdV}>{form.propietario}</td></tr></tbody>
               </table>
-              <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:'5px' }}>
+
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead><tr><th colSpan="2" style={thH}>UBICACIÓN DEL PREDIO</th></tr></thead>
                 <tbody>
                   <tr><td style={tdH}>CALLE:</td><td style={tdV}>{form.calle} #{form.numero}</td></tr>
@@ -483,7 +474,8 @@ const App = () => {
                   <tr><td style={tdH}>C.P.:</td><td style={tdV}>{form.codigoPostal}</td></tr>
                 </tbody>
               </table>
-              <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:'5px' }}>
+
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead><tr><th colSpan="2" style={thH}>DATOS DEL PREDIO</th></tr></thead>
                 <tbody>
                   <tr><td style={tdH}>SUPERFICIE:</td><td style={{ ...tdV, fontWeight:'bold', color:'#003a6e', fontSize:'10px' }}>{areaM2.toFixed(2)} M²</td></tr>
@@ -494,6 +486,7 @@ const App = () => {
                   <tr><td style={tdH}>USO SUELO:</td><td style={tdV}>{form.usoSuelo}</td></tr>
                 </tbody>
               </table>
+
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr><th colSpan="3" style={thH}>LINDEROS Y COLINDANCIAS</th></tr>
@@ -518,54 +511,80 @@ const App = () => {
                   ))}
                 </tbody>
               </table>
-              <div style={{ marginTop:'6px', fontSize:'6px', textAlign:'justify', border:'1px solid #ccc', padding:'3px 4px', background:'#fffde7', lineHeight:1.4 }}>
-                <strong>NOTA LEGAL:</strong> Documento con carácter de Cédula Catastral conforme al Código Financiero del Estado de México y Municipios. Superficie de carácter fiscal. No sustituye escritura pública ni plano topográfico.
+
+              <div style={{ fontSize:'6px', textAlign:'justify', border:'1px solid #ccc', padding:'3px 4px', background:'#fffde7', lineHeight:1.4 }}>
+                <strong>NOTA LEGAL:</strong> Cédula Catastral conforme al Código Financiero del Estado de México y Municipios. Superficie fiscal. No sustituye escritura pública ni plano topográfico.
+              </div>
+
+              {/* FOTO — ocupa el resto del espacio */}
+              <div style={{ flex:1, border:'2px dashed #90a4ae', borderRadius:'4px', overflow:'hidden', minHeight:'120px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#f8f9fa' }}>
+                {imagenSrc
+                  ? <img src={imagenSrc} alt="terreno" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                  : <>
+                      <div style={{ fontSize:'28px', color:'#ccc' }}>📷</div>
+                      <div style={{ fontSize:'7px', color:'#aaa', textAlign:'center', marginTop:'4px' }}>Foto / croquis<br/>del terreno</div>
+                    </>
+                }
               </div>
             </div>
 
-            {/* Columna central: croquis */}
-            <div style={{ border:'2px solid #000', background:'#fafcff', padding:'4px' }}>
-              <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'7px', background:'#003a6e', color:'white', padding:'2px 4px', marginBottom:'4px' }}>
+            {/* ── COLUMNA CENTRAL: CROQUIS ── */}
+            <div style={{ border:'2px solid #000', background:'#fafcff', display:'flex', flexDirection:'column' }}>
+              <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'7px', background:'#003a6e', color:'white', padding:'3px 4px', flexShrink:0 }}>
                 CROQUIS DEL PREDIO — REPRESENTACIÓN GRÁFICA PROPORCIONAL
               </div>
-              <TerrenoCroquis
-                norteM={norteM} surM={surM} esteM={esteM} oesteM={oesteM}
-                norteCol={form.norteColindancia} surCol={form.surColindancia}
-                esteCol={form.esteColindancia}   oesteCol={form.oesteColindancia}
-                usoSuelo={form.usoSuelo} areaM2={areaM2}
-                imagenSrc={imagenSrc}
-              />
+              {/* Rosa de vientos fuera del SVG del terreno, con su propio espacio */}
+              <div style={{ display:'flex', justifyContent:'flex-end', padding:'6px 10px 0 0', flexShrink:0 }}>
+                <RosaVientos size={78}/>
+              </div>
+              {/* Croquis ocupa el resto */}
+              <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <TerrenoCroquis
+                  norteM={norteM} surM={surM} esteM={esteM} oesteM={oesteM}
+                  norteCol={form.norteColindancia} surCol={form.surColindancia}
+                  esteCol={form.esteColindancia}   oesteCol={form.oesteColindancia}
+                  usoSuelo={form.usoSuelo} areaM2={areaM2}
+                  svgW={CROQUIS_W} svgH={CROQUIS_H}
+                />
+              </div>
             </div>
 
-            {/* Columna derecha: firmas */}
-            <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
-              <div style={{ border:'1px solid #000', padding:'6px', textAlign:'center', flex:1 }}>
+            {/* ── COLUMNA DERECHA: firmas + vigencia ── */}
+            <div style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
+
+              <div style={{ border:'1px solid #000', padding:'6px', textAlign:'center', flex:'0 0 auto' }}>
                 <div style={{ fontWeight:'bold', fontSize:'6.5px', background:'#003a6e', color:'white', margin:'-6px -6px 8px', padding:'3px' }}>PERITO RESPONSABLE</div>
-                <div style={{ height:'50px' }}/>
+                <div style={{ height:'65px' }}/>
                 <div style={{ borderTop:'1px solid #000', paddingTop:'4px', fontSize:'6px' }}>
-                  <div>NOMBRE Y FIRMA</div><div>CÉD. PROFESIONAL</div>
+                  <div>NOMBRE Y FIRMA</div>
+                  <div>CÉD. PROFESIONAL</div>
                 </div>
               </div>
-              <div style={{ border:'1px solid #000', padding:'6px', textAlign:'center', flex:1 }}>
+
+              <div style={{ border:'1px solid #000', padding:'6px', textAlign:'center', flex:'0 0 auto' }}>
                 <div style={{ fontWeight:'bold', fontSize:'6.5px', background:'#003a6e', color:'white', margin:'-6px -6px 8px', padding:'3px' }}>AUTORIZACIÓN OFICIAL</div>
-                <div style={{ height:'50px' }}/>
+                <div style={{ height:'65px' }}/>
                 <div style={{ borderTop:'1px solid #000', paddingTop:'4px', fontSize:'6px' }}>
                   <div>DIR. DE CATASTRO MUNICIPAL</div>
-                  <div style={{ marginTop:'4px', border:'1px dashed #999', padding:'3px' }}>SELLO OFICIAL</div>
+                  <div style={{ marginTop:'4px', border:'1px dashed #999', padding:'3px', fontSize:'6px' }}>SELLO OFICIAL</div>
                 </div>
               </div>
+
               <div style={{ border:'1px solid #000', padding:'6px', textAlign:'center', fontSize:'7px' }}>
                 <div style={{ fontWeight:'bold', marginBottom:'3px', color:'#003a6e' }}>VIGENCIA</div>
-                <div>Año fiscal vigente</div>
-                <div style={{ fontWeight:'bold', marginTop:'5px', fontSize:'6px' }}>FOLIO ÚNICO:</div>
+                <div>Ejercicio Fiscal en Curso</div>
+                <div style={{ fontWeight:'bold', marginTop:'6px', fontSize:'6px' }}>FOLIO ÚNICO:</div>
                 <div style={{ fontWeight:'bold', fontSize:'9px', letterSpacing:'1px', color:'#003a6e' }}>{form.claveCatastral}</div>
               </div>
+
+              {/* Espacio vacío restante */}
+              <div style={{ flex:1 }}/>
             </div>
 
-          </div>{/* fin grid */}
+          </div>{/* fin grid 3 cols */}
 
-          {/* Pie de página */}
-          <div style={{ marginTop:'5px', borderTop:'2px solid #000', paddingTop:'4px', display:'flex', justifyContent:'space-between', fontSize:'6.5px', color:'#333' }}>
+          {/* ── PIE DE PÁGINA ── */}
+          <div style={{ marginTop:'4px', borderTop:'2px solid #000', paddingTop:'3px', display:'flex', justifyContent:'space-between', fontSize:'6.5px', color:'#333' }}>
             <div>Generado el {form.fecha} | Sistema de Información Catastral | {form.municipio}, {form.estado}</div>
             <div style={{ fontWeight:'bold' }}>CLAVE: {form.claveCatastral}</div>
           </div>
