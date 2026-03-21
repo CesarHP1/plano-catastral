@@ -41,43 +41,66 @@ const MUNICIPIOS = [
   'Zacazonapan','Zacualpan','Zinacantepec','Zumpahuacán','Zumpango'
 ];
 
-/* ──────────────────────────────────────────────────────────────────────────
-   GEOMETRÍA REAL: resuelve los 4 vértices de un cuadrilátero dado sus
-   4 lados, asumiendo que el lado Norte (arriba) y el lado Sur (abajo) son
-   horizontales y paralelos.
-
-   TL = (0, 0)
-   TR = (N, 0)
-   BL = (bx, by)     →  |TL-BL| = O  →  bx²+by² = O²
-   BR = (bx+S, by)   →  |TR-BR| = E  →  (N-bx-S)²+by² = E²
-
-   Restando: (N-S-bx)² - bx² = E²-O²
-   → bx = ((N-S)² + O² - E²) / (2*(N-S))   si N≠S
-   → bx = (O²-E²) / (2*N)  + N/2 - S/2     equivalente pero lo dejamos general
-
-   Si N=S → bx = (O²-E²)/(2*... ) usar caso especial
-   by = sqrt(max(0, O²-bx²))
-─────────────────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   GEOMETRÍA ROBUSTA
+   Dado N (norte/top), S (sur/bottom), E (este/derecha), O (oeste/izquierda):
+   - TL = (0, 0),  TR = (N, 0)
+   - BL = (bx, by) con |TL→BL|=O
+   - BR = (bx+S, by) con |TR→BR|=E
+   
+   Solución exacta cuando es posible (by²>0), o aproximación proporcional 
+   cuando las medidas son geométricamente inconsistentes.
+   
+   Retorna: { TL, TR, BL, BR, valid: bool, maxE: número máximo posible de E }
+───────────────────────────────────────────────────────────────────────────── */
 const solveQuad = (N, S, E, O) => {
-  // Todos en metros reales
+  const safe = v => Math.max(v, 0.1);
+  N = safe(N); S = safe(S); E = safe(E); O = safe(O);
+
   const d = N - S;
   let bx;
   if (Math.abs(d) < 0.001) {
-    // Caso paralelogramo: N≈S
-    bx = (O * O - E * E) / (2 * N) + N / 2 - S / 2;
-    // Si eso da NaN por N=0, fallback
-    if (!isFinite(bx)) bx = 0;
+    // Paralelogramo (N ≈ S)
+    bx = (O * O - E * E) / (2 * N + 0.001);
   } else {
     bx = (d * d + O * O - E * E) / (2 * d);
   }
+
   const by2 = O * O - bx * bx;
-  const by = Math.sqrt(Math.max(0, by2));
-  // Vértices en metros (y positivo = hacia abajo)
-  const TL = { x: 0,       y: 0  };
-  const TR = { x: N,       y: 0  };
-  const BL = { x: bx,      y: by };
-  const BR = { x: bx + S,  y: by };
-  return { TL, TR, BL, BR };
+
+  if (by2 > 1e-4) {
+    // ✅ Solución exacta válida
+    const by = Math.sqrt(by2);
+    return {
+      TL: { x: 0,      y: 0  },
+      TR: { x: N,      y: 0  },
+      BL: { x: bx,     y: by },
+      BR: { x: bx + S, y: by },
+      valid: true,
+    };
+  }
+
+  // ⚠️ Medidas inconsistentes: calcular E máximo y hacer aproximación visual
+  // E_max se da cuando by=0, es decir |bx|=O → bx=±O
+  // Intentamos bx negativo primero (caso más común cuando E>N)
+  const bxForMaxE = -Math.sqrt(Math.max(0, O * O)); // bx más negativo posible
+  const eMax1 = Math.sqrt((N - bxForMaxE - S) ** 2); // by=0
+  const eMax2 = Math.sqrt((N - O - S) ** 2 + 0);
+  const maxE = Math.max(eMax1, eMax2, N + O + 0.01);
+
+  // Aproximación: fijar una altura mínima razonable (30% del lado mayor)
+  const byApprox = Math.max(O, E) * 0.45;
+  // bx proporcional al desfase Norte-Sur
+  const bxApprox = (N - S) / 2;
+
+  return {
+    TL: { x: 0,             y: 0         },
+    TR: { x: N,             y: 0         },
+    BL: { x: bxApprox,      y: byApprox  },
+    BR: { x: bxApprox + S,  y: byApprox  },
+    valid: false,
+    maxE: Math.round(maxE * 10) / 10,
+  };
 };
 
 /* ── Rosa de vientos ─────────────────────────────────────────────────────── */
@@ -87,16 +110,12 @@ const RosaVientos = ({ size = 80 }) => {
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} xmlns="http://www.w3.org/2000/svg">
       <circle cx={c} cy={c} r={r} fill="white" stroke="#222" strokeWidth="1.5"/>
       <circle cx={c} cy={c} r={r*0.45} fill="none" stroke="#bbb" strokeWidth="0.8"/>
-      {/* N rojo */}
       <polygon points={`${c},${c-r+3} ${c+r*0.2},${c} ${c},${c-r*0.42}`} fill="#c00"/>
       <polygon points={`${c},${c-r+3} ${c-r*0.2},${c} ${c},${c-r*0.42}`} fill="#900"/>
-      {/* S */}
       <polygon points={`${c},${c+r-3} ${c+r*0.2},${c} ${c},${c+r*0.42}`} fill="white" stroke="#555" strokeWidth="0.6"/>
       <polygon points={`${c},${c+r-3} ${c-r*0.2},${c} ${c},${c+r*0.42}`} fill="#ddd" stroke="#555" strokeWidth="0.6"/>
-      {/* E */}
       <polygon points={`${c+r-3},${c} ${c},${c+r*0.2} ${c+r*0.42},${c}`} fill="white" stroke="#555" strokeWidth="0.6"/>
       <polygon points={`${c+r-3},${c} ${c},${c-r*0.2} ${c+r*0.42},${c}`} fill="#ddd" stroke="#555" strokeWidth="0.6"/>
-      {/* O */}
       <polygon points={`${c-r+3},${c} ${c},${c+r*0.2} ${c-r*0.42},${c}`} fill="white" stroke="#555" strokeWidth="0.6"/>
       <polygon points={`${c-r+3},${c} ${c},${c-r*0.2} ${c-r*0.42},${c}`} fill="#ddd" stroke="#555" strokeWidth="0.6"/>
       {[45,135,225,315].map(deg => {
@@ -107,37 +126,32 @@ const RosaVientos = ({ size = 80 }) => {
         return <polygon key={deg} points={`${tx},${ty} ${b1x},${b1y} ${c},${c} ${b2x},${b2y}`} fill="#bbb" stroke="#999" strokeWidth="0.3"/>;
       })}
       <circle cx={c} cy={c} r={r*0.09} fill="#c00" stroke="#800" strokeWidth="0.8"/>
-      <text x={c}   y={c-r+13}  textAnchor="middle" fontSize={r*0.28} fontWeight="bold" fill="#c00" fontFamily="Arial">N</text>
-      <text x={c}   y={c+r-3}   textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">S</text>
-      <text x={c+r-5} y={c+r*0.08} textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">E</text>
-      <text x={c-r+5} y={c+r*0.08} textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">O</text>
+      <text x={c}     y={c-r+13}    textAnchor="middle" fontSize={r*0.28} fontWeight="bold" fill="#c00" fontFamily="Arial">N</text>
+      <text x={c}     y={c+r-3}     textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">S</text>
+      <text x={c+r-5} y={c+r*0.08}  textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">E</text>
+      <text x={c-r+5} y={c+r*0.08}  textAnchor="middle" fontSize={r*0.23} fill="#333" fontFamily="Arial">O</text>
     </svg>
   );
 };
 
-/* ── Croquis con geometría real ──────────────────────────────────────────── */
+/* ── Croquis ─────────────────────────────────────────────────────────────── */
 const TerrenoCroquis = ({ norteM, surM, esteM, oesteM, norteCol, surCol, esteCol, oesteCol, usoSuelo, areaM2, svgW, svgH }) => {
-  const PAD_H = 90, PAD_V = 65;
+  const PAD_H = 92, PAD_V = 68;
   const drawW = svgW - PAD_H * 2;
-  const drawH = svgH - PAD_V * 2 - 30;
+  const drawH = svgH - PAD_V * 2 - 32;
 
-  // 1) Resolver geometría real en metros
-  const { TL: tl, TR: tr, BL: bl, BR: br } = solveQuad(
-    Math.max(norteM, 0.1), Math.max(surM, 0.1),
-    Math.max(esteM, 0.1),  Math.max(oesteM, 0.1)
-  );
+  const geo = solveQuad(norteM, surM, esteM, oesteM);
+  const { TL: tl, TR: tr, BL: bl, BR: br, valid } = geo;
 
-  // 2) Bounding box real
+  // Bounding box
   const allX = [tl.x, tr.x, bl.x, br.x];
   const allY = [tl.y, tr.y, bl.y, br.y];
   const minX = Math.min(...allX), maxX = Math.max(...allX);
   const minY = Math.min(...allY), maxY = Math.max(...allY);
-  const realW = maxX - minX, realH = maxY - minY;
+  const realW = maxX - minX || 1, realH = maxY - minY || 1;
 
-  // 3) Escala uniforme para que quepa en el área de dibujo
-  const scale = Math.min(drawW / Math.max(realW, 0.1), drawH / Math.max(realH, 0.1));
+  const scale = Math.min(drawW / realW, drawH / realH);
 
-  // 4) Centrar en el SVG
   const offX = PAD_H + (drawW - realW * scale) / 2 - minX * scale;
   const offY = PAD_V + (drawH - realH * scale) / 2 - minY * scale;
 
@@ -154,8 +168,7 @@ const TerrenoCroquis = ({ norteM, surM, esteM, oesteM, norteCol, surCol, esteCol
 
   const trunc = (s, n) => s && s.length > n ? s.slice(0,n)+'…' : (s||'');
 
-  // Escala gráfica
-  const scaleBarM = Math.max(Math.round(Math.max(norteM,surM) / 4 / 5) * 5, 5);
+  const scaleBarM = Math.max(Math.round(Math.max(norteM, surM)/4/5)*5, 5);
   const scaleBarPx = scaleBarM * scale;
   const scaleY = svgH - 18;
 
@@ -176,38 +189,44 @@ const TerrenoCroquis = ({ norteM, surM, esteM, oesteM, norteCol, surCol, esteCol
       <rect width={svgW} height={svgH} fill="url(#gr)"/>
       <polygon points={pts} fill="rgba(200,225,245,0.55)"/>
       <rect width={svgW} height={svgH} fill="url(#ht)" clipPath="url(#tc5)"/>
-      <polygon points={pts} fill="none" stroke="#003a6e" strokeWidth="2.4"/>
+      <polygon points={pts} fill="none" stroke={valid ? "#003a6e" : "#e67e00"} strokeWidth="2.4" strokeDasharray={valid ? "none" : "6,3"}/>
 
-      {/* Línea norte en rojo */}
+      {/* Norte en rojo */}
       <line x1={TL.x} y1={TL.y} x2={TR.x} y2={TR.y} stroke="#c00" strokeWidth="2.6"/>
 
-      {/* Vértices */}
       {[TL,TR,BR,BL].map((p,i) =>
-        <circle key={i} cx={p.x} cy={p.y} r="4.5" fill="#003a6e" stroke="white" strokeWidth="1.2"/>
+        <circle key={i} cx={p.x} cy={p.y} r="4.5" fill={valid?"#003a6e":"#e67e00"} stroke="white" strokeWidth="1.2"/>
       )}
 
-      {/* Etiquetas Norte */}
+      {/* Advertencia si medidas inconsistentes */}
+      {!valid && (
+        <g>
+          <rect x={svgW/2-130} y={6} width={260} height={22} rx="4" fill="#fff3cd" stroke="#e67e00" strokeWidth="1.2"/>
+          <text x={svgW/2} y={21} textAnchor="middle" fontSize="9.5" fill="#a05000" fontFamily="Arial" fontWeight="bold">
+            ⚠ Medidas inconsistentes — representación aproximada
+          </text>
+        </g>
+      )}
+
+      {/* Norte */}
       <text x={midN.x} y={midN.y-26} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#c00" fontFamily="Arial">{norteM.toFixed(2)} m</text>
       <text x={midN.x} y={midN.y-13} textAnchor="middle" fontSize="8.5" fill="#444" fontFamily="Arial">{trunc(norteCol,26)}</text>
-
       {/* Sur */}
       <text x={midS.x} y={midS.y+17} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#333" fontFamily="Arial">{surM.toFixed(2)} m</text>
       <text x={midS.x} y={midS.y+29} textAnchor="middle" fontSize="8.5" fill="#444" fontFamily="Arial">{trunc(surCol,26)}</text>
-
       {/* Este */}
       <text x={midE.x+9} y={midE.y-5}  fontSize="10" fontWeight="bold" fill="#333" fontFamily="Arial">{esteM.toFixed(2)} m</text>
       <text x={midE.x+9} y={midE.y+8}  fontSize="8"  fill="#444" fontFamily="Arial">{trunc(esteCol,16)}</text>
-
       {/* Oeste */}
-      <text x={midO.x-9} y={midO.y-5}  textAnchor="end" fontSize="10" fontWeight="bold" fill="#333" fontFamily="Arial">{oesteM.toFixed(2)} m</text>
-      <text x={midO.x-9} y={midO.y+8}  textAnchor="end" fontSize="8"  fill="#444" fontFamily="Arial">{trunc(oesteCol,16)}</text>
+      <text x={midO.x-9} y={midO.y-5} textAnchor="end" fontSize="10" fontWeight="bold" fill="#333" fontFamily="Arial">{oesteM.toFixed(2)} m</text>
+      <text x={midO.x-9} y={midO.y+8} textAnchor="end" fontSize="8"  fill="#444" fontFamily="Arial">{trunc(oesteCol,16)}</text>
 
       {/* Centro */}
       <text x={cx} y={cy-16} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#003a6e" fontFamily="Arial">TERRENO</text>
       <text x={cx} y={cy+6}  textAnchor="middle" fontSize="18" fontWeight="bold" fill="#000"    fontFamily="Arial">{areaM2.toFixed(2)} m²</text>
       <text x={cx} y={cy+22} textAnchor="middle" fontSize="10" fill="#555"                      fontFamily="Arial">{usoSuelo}</text>
 
-      {/* Escala gráfica */}
+      {/* Escala */}
       <rect x={PAD_H} y={scaleY-7} width={scaleBarPx} height={8} fill="none" stroke="#333" strokeWidth="1"/>
       <rect x={PAD_H} y={scaleY-7} width={scaleBarPx/2} height={8} fill="#333"/>
       <text x={PAD_H}              y={scaleY+10} fontSize="7.5" fill="#333" fontFamily="Arial">0</text>
@@ -220,7 +239,6 @@ const TerrenoCroquis = ({ norteM, surM, esteM, oesteM, norteCol, surCol, esteCol
 /* ── App ─────────────────────────────────────────────────────────────────── */
 const App = () => {
   const printRef = useRef();
-
   const [form, setForm] = useState({
     claveCatastral:'15-001-002-003-04', propietario:'JUAN PÉREZ LÓPEZ',
     calle:'CALLE DE LOS ARCOS', numero:'123', colonia:'COL. CENTRO',
@@ -232,107 +250,119 @@ const App = () => {
     oesteMedida:'30.00', oesteColindancia:'AV. PRINCIPAL',
     fecha: new Date().toLocaleDateString('es-MX'),
   });
+  const [munQuery,setMunQuery]=useState('Tlalnepantla de Baz');
+  const [munSug,setMunSug]=useState([]);
+  const [showMun,setShowMun]=useState(false);
+  const [imagenSrc,setImagenSrc]=useState(null);
 
-  const [munQuery, setMunQuery] = useState('Tlalnepantla de Baz');
-  const [munSug,   setMunSug]   = useState([]);
-  const [showMun,  setShowMun]  = useState(false);
-  const [imagenSrc,setImagenSrc]= useState(null);
-
-  const handleChange = e => setForm(f => ({...f, [e.target.name]: e.target.value}));
+  const handleChange = e => setForm(f=>({...f,[e.target.name]:e.target.value}));
   const handleMunInput = e => {
-    const val = e.target.value; setMunQuery(val);
-    if (val.length > 0) { setMunSug(MUNICIPIOS.filter(m => m.toLowerCase().includes(val.toLowerCase())).slice(0,8)); setShowMun(true); }
+    const val=e.target.value; setMunQuery(val);
+    if(val.length>0){setMunSug(MUNICIPIOS.filter(m=>m.toLowerCase().includes(val.toLowerCase())).slice(0,8));setShowMun(true);}
     else setShowMun(false);
   };
-  const selectMun = m => { setMunQuery(m); setForm(f => ({...f, municipio: m.toUpperCase()})); setShowMun(false); };
-  const handleImagen = e => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader(); reader.onload = ev => setImagenSrc(ev.target.result); reader.readAsDataURL(file);
+  const selectMun = m=>{setMunQuery(m);setForm(f=>({...f,municipio:m.toUpperCase()}));setShowMun(false);};
+  const handleImagen = e=>{
+    const file=e.target.files[0]; if(!file)return;
+    const reader=new FileReader(); reader.onload=ev=>setImagenSrc(ev.target.result); reader.readAsDataURL(file);
   };
 
-  const toM = val => {
-    const v = parseFloat(val) || 0;
-    if (form.unidadMedida === 'varas') return v * 0.838;
-    if (form.unidadMedida === 'pies')  return v * 0.3048;
+  const toM = val=>{
+    const v=parseFloat(val)||0;
+    if(form.unidadMedida==='varas') return v*0.838;
+    if(form.unidadMedida==='pies')  return v*0.3048;
     return v;
   };
+  const norteM=toM(form.norteMedida), surM=toM(form.surMedida);
+  const esteM=toM(form.esteMedida),   oesteM=toM(form.oesteMedida);
+  const areaM2=((norteM+surM)/2)*((esteM+oesteM)/2);
 
-  const norteM = toM(form.norteMedida), surM = toM(form.surMedida);
-  const esteM  = toM(form.esteMedida),  oesteM = toM(form.oesteMedida);
-  const areaM2 = ((norteM + surM) / 2) * ((esteM + oesteM) / 2);
+  // Validar geometría en tiempo real para mostrar alerta en formulario
+  const geoCheck = solveQuad(norteM, surM, esteM, oesteM);
 
-  const handlePrint = async () => {
-    const el = printRef.current; if (!el) return;
-    try {
-      const canvas = await html2canvas(el, { scale:2, useCORS:true, backgroundColor:'#ffffff', logging:false });
-      const img = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
-      pdf.addImage(img, 'PNG', 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
-      pdf.save('Plano_Catastral_' + form.claveCatastral + '.pdf');
-    } catch(err) { console.error(err); }
+  const handlePrint = async ()=>{
+    const el=printRef.current; if(!el)return;
+    try{
+      const canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+      const img=canvas.toDataURL('image/png');
+      const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+      pdf.addImage(img,'PNG',0,0,pdf.internal.pageSize.getWidth(),pdf.internal.pageSize.getHeight());
+      pdf.save('Plano_Catastral_'+form.claveCatastral+'.pdf');
+    }catch(err){console.error(err);}
   };
 
-  const lbl = { fontWeight:'bold', fontSize:'11px', marginBottom:'3px', display:'block', color:'#333' };
-  const inp = { padding:'7px 9px', border:'1px solid #bbb', borderRadius:'3px', fontSize:'13px', width:'100%', boxSizing:'border-box', fontFamily:'Arial' };
-  const sec = { color:'#004a8f', borderBottom:'2px solid #004a8f', paddingBottom:'4px', marginBottom:'12px', marginTop:'18px', fontSize:'13px', fontWeight:'bold' };
-  const tdH = { border:'1px solid #000', padding:'2px 3px', fontWeight:'bold', background:'#e8eef5', fontSize:'7.5px', whiteSpace:'nowrap' };
-  const tdV = { border:'1px solid #000', padding:'2px 3px', fontSize:'7.5px' };
-  const thH = { background:'#003a6e', color:'white', padding:'3px 4px', textAlign:'center', fontSize:'7px', fontWeight:'bold' };
+  const lbl={fontWeight:'bold',fontSize:'11px',marginBottom:'3px',display:'block',color:'#333'};
+  const inp={padding:'7px 9px',border:'1px solid #bbb',borderRadius:'3px',fontSize:'13px',width:'100%',boxSizing:'border-box',fontFamily:'Arial'};
+  const sec={color:'#004a8f',borderBottom:'2px solid #004a8f',paddingBottom:'4px',marginBottom:'12px',marginTop:'18px',fontSize:'13px',fontWeight:'bold'};
+  const tdH={border:'1px solid #000',padding:'2px 3px',fontWeight:'bold',background:'#e8eef5',fontSize:'7.5px',whiteSpace:'nowrap'};
+  const tdV={border:'1px solid #000',padding:'2px 3px',fontSize:'7.5px'};
+  const thH={background:'#003a6e',color:'white',padding:'3px 4px',textAlign:'center',fontSize:'7px',fontWeight:'bold'};
 
-  const CROQUIS_W = 540, CROQUIS_H = 700;
+  const CROQUIS_W=540, CROQUIS_H=700;
 
   return (
-    <div style={{ fontFamily:'Arial,sans-serif', background:'#e8edf3', minHeight:'100vh', padding:'16px' }}>
+    <div style={{fontFamily:'Arial,sans-serif',background:'#e8edf3',minHeight:'100vh',padding:'16px'}}>
 
       {/* ══ FORMULARIO ══ */}
-      <div style={{ maxWidth:'950px', margin:'0 auto 20px', background:'white', borderRadius:'6px', overflow:'hidden', boxShadow:'0 2px 10px rgba(0,0,0,0.13)' }}>
-        <div style={{ background:'#004a8f', color:'white', padding:'14px 20px' }}>
-          <h1 style={{ margin:0, fontSize:'17px' }}>📋 Generador de Plano Catastral — Estado de México</h1>
-          <p style={{ margin:'3px 0 0', fontSize:'11px', opacity:0.8 }}>Complete los datos — el plano se actualiza en tiempo real</p>
+      <div style={{maxWidth:'950px',margin:'0 auto 20px',background:'white',borderRadius:'6px',overflow:'hidden',boxShadow:'0 2px 10px rgba(0,0,0,0.13)'}}>
+        <div style={{background:'#004a8f',color:'white',padding:'14px 20px'}}>
+          <h1 style={{margin:0,fontSize:'17px'}}>📋 Generador de Plano Catastral — Estado de México</h1>
+          <p style={{margin:'3px 0 0',fontSize:'11px',opacity:0.8}}>Complete los datos — el plano se actualiza en tiempo real</p>
         </div>
-        <div style={{ padding:'20px' }}>
+        <div style={{padding:'20px'}}>
 
           <h3 style={sec}>Identificación del Predio</h3>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
             <div><label style={lbl}>Clave Catastral</label><input style={inp} name="claveCatastral" value={form.claveCatastral} onChange={handleChange}/></div>
             <div><label style={lbl}>Nombre del Propietario</label><input style={inp} name="propietario" value={form.propietario} onChange={handleChange}/></div>
           </div>
 
           <h3 style={sec}>Ubicación del Predio</h3>
-          <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'12px', marginBottom:'12px' }}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:'12px',marginBottom:'12px'}}>
             <div><label style={lbl}>Calle / Avenida</label><input style={inp} name="calle" value={form.calle} onChange={handleChange}/></div>
             <div><label style={lbl}>Número Exterior</label><input style={inp} name="numero" value={form.numero} onChange={handleChange}/></div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'12px', marginBottom:'12px' }}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:'12px',marginBottom:'12px'}}>
             <div><label style={lbl}>Colonia / Fraccionamiento</label><input style={inp} name="colonia" value={form.colonia} onChange={handleChange}/></div>
             <div><label style={lbl}>Código Postal</label><input style={inp} name="codigoPostal" value={form.codigoPostal} onChange={handleChange}/></div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-            <div style={{ position:'relative' }}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+            <div style={{position:'relative'}}>
               <label style={lbl}>Municipio (búsqueda)</label>
               <input style={inp} value={munQuery} onChange={handleMunInput}
-                onFocus={() => munQuery && setShowMun(true)}
-                onBlur={() => setTimeout(() => setShowMun(false), 160)}
+                onFocus={()=>munQuery&&setShowMun(true)} onBlur={()=>setTimeout(()=>setShowMun(false),160)}
                 placeholder="Escriba para buscar..." autoComplete="off"/>
-              {showMun && munSug.length > 0 && (
-                <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1px solid #bbb', zIndex:300, maxHeight:'200px', overflowY:'auto', boxShadow:'0 4px 16px rgba(0,0,0,0.18)', borderRadius:'0 0 4px 4px' }}>
-                  {munSug.map((m,i) => (
-                    <div key={i} onMouseDown={() => selectMun(m)}
-                      style={{ padding:'8px 12px', cursor:'pointer', fontSize:'13px', borderBottom:'1px solid #f0f0f0' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#e8f0fe'}
-                      onMouseLeave={e => e.currentTarget.style.background='white'}>{m}</div>
+              {showMun&&munSug.length>0&&(
+                <div style={{position:'absolute',top:'100%',left:0,right:0,background:'white',border:'1px solid #bbb',zIndex:300,maxHeight:'200px',overflowY:'auto',boxShadow:'0 4px 16px rgba(0,0,0,0.18)',borderRadius:'0 0 4px 4px'}}>
+                  {munSug.map((m,i)=>(
+                    <div key={i} onMouseDown={()=>selectMun(m)}
+                      style={{padding:'8px 12px',cursor:'pointer',fontSize:'13px',borderBottom:'1px solid #f0f0f0'}}
+                      onMouseEnter={e=>e.currentTarget.style.background='#e8f0fe'}
+                      onMouseLeave={e=>e.currentTarget.style.background='white'}>{m}</div>
                   ))}
                 </div>
               )}
             </div>
             <div><label style={lbl}>Estado de la República</label>
               <select style={inp} name="estado" value={form.estado} onChange={handleChange}>
-                {ESTADOS.map(e => <option key={e} value={e}>{e.charAt(0)+e.slice(1).toLowerCase()}</option>)}
+                {ESTADOS.map(e=><option key={e} value={e}>{e.charAt(0)+e.slice(1).toLowerCase()}</option>)}
               </select></div>
           </div>
 
           <h3 style={sec}>Medidas y Colindancias</h3>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'12px', marginBottom:'14px' }}>
+
+          {/* Alerta de geometría inconsistente */}
+          {!geoCheck.valid && (
+            <div style={{background:'#fff3cd',border:'1.5px solid #e67e00',borderRadius:'6px',padding:'10px 14px',marginBottom:'14px',fontSize:'12px',color:'#7d4000'}}>
+              <strong>⚠ Medidas geométricamente inconsistentes</strong><br/>
+              Con Norte={norteM.toFixed(1)}m, Sur={surM.toFixed(1)}m y Oeste={oesteM.toFixed(1)}m,
+              el lado <strong>Este máximo posible</strong> es aproximadamente <strong>{geoCheck.maxE} m</strong>.
+              El valor actual ({esteM.toFixed(1)}m) excede ese límite.
+              El croquis mostrará una aproximación visual (línea naranja punteada).
+            </div>
+          )}
+
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px',marginBottom:'14px'}}>
             <div><label style={lbl}>Unidad de Medida</label>
               <select style={inp} name="unidadMedida" value={form.unidadMedida} onChange={handleChange}>
                 <option value="metros">Metros (m)</option>
@@ -341,22 +371,22 @@ const App = () => {
               </select></div>
             <div><label style={lbl}>Uso de Suelo</label>
               <select style={inp} name="usoSuelo" value={form.usoSuelo} onChange={handleChange}>
-                {['HABITACIONAL','COMERCIAL','INDUSTRIAL','EQUIPAMIENTO','MIXTO','RÚSTICO','AGRÍCOLA'].map(u =>
+                {['HABITACIONAL','COMERCIAL','INDUSTRIAL','EQUIPAMIENTO','MIXTO','RÚSTICO','AGRÍCOLA'].map(u=>
                   <option key={u} value={u}>{u.charAt(0)+u.slice(1).toLowerCase()}</option>)}
               </select></div>
             <div><label style={lbl}>Fecha de Elaboración</label><input style={inp} name="fecha" value={form.fecha} onChange={handleChange}/></div>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
             {[
-              {label:'⬆ NORTE (Frente)', med:'norteMedida', col:'norteColindancia', color:'#c00'},
-              {label:'⬇ SUR (Fondo)',    med:'surMedida',   col:'surColindancia',   color:'#555'},
-              {label:'➡ ESTE (Oriente)', med:'esteMedida',  col:'esteColindancia',  color:'#555'},
-              {label:'⬅ OESTE (Poniente)',med:'oesteMedida',col:'oesteColindancia', color:'#555'},
-            ].map(({label,med,col,color}) => (
-              <div key={med} style={{ border:'1px solid #d0dcea', borderRadius:'5px', padding:'10px', background:'#f6f9ff' }}>
-                <div style={{ fontWeight:'bold', color, fontSize:'12px', marginBottom:'8px' }}>{label}</div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:'8px' }}>
+              {label:'⬆ NORTE (Frente)',med:'norteMedida',col:'norteColindancia',color:'#c00'},
+              {label:'⬇ SUR (Fondo)',med:'surMedida',col:'surColindancia',color:'#555'},
+              {label:'➡ ESTE (Oriente)',med:'esteMedida',col:'esteColindancia',color:'#555'},
+              {label:'⬅ OESTE (Poniente)',med:'oesteMedida',col:'oesteColindancia',color:'#555'},
+            ].map(({label,med,col,color})=>(
+              <div key={med} style={{border:`1px solid ${med==='esteMedida'&&!geoCheck.valid?'#e67e00':'#d0dcea'}`,borderRadius:'5px',padding:'10px',background:med==='esteMedida'&&!geoCheck.valid?'#fff8f0':'#f6f9ff'}}>
+                <div style={{fontWeight:'bold',color,fontSize:'12px',marginBottom:'8px'}}>{label}</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:'8px'}}>
                   <div><label style={{...lbl,fontSize:'10px'}}>Medida ({form.unidadMedida})</label><input style={inp} name={med} value={form[med]} onChange={handleChange}/></div>
                   <div><label style={{...lbl,fontSize:'10px'}}>Colindancia</label><input style={inp} name={col} value={form[col]} onChange={handleChange}/></div>
                 </div>
@@ -364,82 +394,78 @@ const App = () => {
             ))}
           </div>
 
-          <div style={{ marginTop:'14px', border:'1px dashed #90a4ae', borderRadius:'5px', padding:'10px 14px', background:'#f9fafb' }}>
+          <div style={{marginTop:'14px',border:'1px dashed #90a4ae',borderRadius:'5px',padding:'10px 14px',background:'#f9fafb'}}>
             <label style={{...lbl,fontSize:'12px'}}>📷 Imagen opcional del terreno</label>
-            <input type="file" accept="image/*" onChange={handleImagen} style={{ fontSize:'12px' }}/>
-            {imagenSrc && <img src={imagenSrc} alt="terreno" style={{ marginTop:'8px', maxHeight:'80px', borderRadius:'4px', border:'1px solid #ccc' }}/>}
+            <input type="file" accept="image/*" onChange={handleImagen} style={{fontSize:'12px'}}/>
+            {imagenSrc&&<img src={imagenSrc} alt="terreno" style={{marginTop:'8px',maxHeight:'80px',borderRadius:'4px',border:'1px solid #ccc'}}/>}
           </div>
 
-          <div style={{ marginTop:'16px', background:'#e8f5e9', border:'2px solid #4caf50', borderRadius:'6px', padding:'12px 18px', display:'flex', alignItems:'center', gap:'14px' }}>
-            <span style={{ fontSize:'28px' }}>📐</span>
+          <div style={{marginTop:'16px',background:'#e8f5e9',border:'2px solid #4caf50',borderRadius:'6px',padding:'12px 18px',display:'flex',alignItems:'center',gap:'14px'}}>
+            <span style={{fontSize:'28px'}}>📐</span>
             <div>
-              <div style={{ fontSize:'12px', color:'#555' }}>Superficie calculada automáticamente</div>
-              <div style={{ fontSize:'26px', fontWeight:'bold', color:'#1b5e20' }}>{areaM2.toFixed(2)} m²</div>
-              {form.unidadMedida !== 'metros' && <div style={{ fontSize:'10px', color:'#777' }}>Convertido desde {form.unidadMedida}</div>}
+              <div style={{fontSize:'12px',color:'#555'}}>Superficie calculada automáticamente</div>
+              <div style={{fontSize:'26px',fontWeight:'bold',color:'#1b5e20'}}>{areaM2.toFixed(2)} m²</div>
+              {form.unidadMedida!=='metros'&&<div style={{fontSize:'10px',color:'#777'}}>Convertido desde {form.unidadMedida}</div>}
             </div>
           </div>
 
-          <button onClick={handlePrint} style={{ marginTop:'18px', width:'100%', padding:'14px', background:'#004a8f', color:'white', border:'none', cursor:'pointer', fontWeight:'bold', fontSize:'15px', borderRadius:'5px', letterSpacing:'1px' }}>
+          <button onClick={handlePrint} style={{marginTop:'18px',width:'100%',padding:'14px',background:'#004a8f',color:'white',border:'none',cursor:'pointer',fontWeight:'bold',fontSize:'15px',borderRadius:'5px',letterSpacing:'1px'}}>
             ⬇ GENERAR PLANO CATASTRAL EN PDF (Carta)
           </button>
         </div>
       </div>
 
       {/* ══ VISTA PREVIA ══ */}
-      <div style={{ maxWidth:'950px', margin:'0 auto' }}>
-        <div style={{ background:'#004a8f', color:'white', padding:'8px 16px', borderRadius:'4px 4px 0 0', fontSize:'12px', fontWeight:'bold' }}>
+      <div style={{maxWidth:'950px',margin:'0 auto'}}>
+        <div style={{background:'#004a8f',color:'white',padding:'8px 16px',borderRadius:'4px 4px 0 0',fontSize:'12px',fontWeight:'bold'}}>
           📄 VISTA PREVIA EN TIEMPO REAL — Así quedará el PDF
         </div>
 
-        <div ref={printRef} style={{ width:'816px', height:'1056px', background:'white', padding:'14px 14px 10px', boxSizing:'border-box', fontFamily:'Arial,sans-serif', fontSize:'9px', color:'#000', overflow:'hidden' }}>
+        <div ref={printRef} style={{width:'816px',height:'1056px',background:'white',padding:'14px 14px 10px',boxSizing:'border-box',fontFamily:'Arial,sans-serif',fontSize:'9px',color:'#000',overflow:'hidden'}}>
 
           {/* Encabezado */}
-          <div style={{ border:'3px solid #000', padding:'5px 8px', marginBottom:'5px' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-              <svg width="50" height="50" viewBox="0 0 56 56" style={{ flexShrink:0 }} xmlns="http://www.w3.org/2000/svg">
+          <div style={{border:'3px solid #000',padding:'5px 8px',marginBottom:'5px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+              <svg width="50" height="50" viewBox="0 0 56 56" style={{flexShrink:0}} xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="28" cy="28" rx="26" ry="26" fill="#006847" stroke="#000" strokeWidth="1.5"/>
                 <text x="28" y="22" textAnchor="middle" fill="white" fontSize="6" fontWeight="bold">GEM</text>
                 <text x="28" y="31" textAnchor="middle" fill="white" fontSize="5">CATASTRO</text>
                 <text x="28" y="40" textAnchor="middle" fill="#ffd700" fontSize="5">★ ★ ★</text>
               </svg>
-              <div style={{ flex:1, textAlign:'center' }}>
-                <div style={{ fontSize:'11px', fontWeight:'bold' }}>GOBIERNO DEL ESTADO DE MÉXICO</div>
-                <div style={{ fontSize:'9px', fontWeight:'bold' }}>SECRETARÍA DE FINANZAS</div>
-                <div style={{ fontSize:'8px' }}>DIRECCIÓN GENERAL DE CATASTRO E INFORMACIÓN TERRITORIAL</div>
-                <div style={{ fontSize:'13px', fontWeight:'bold', marginTop:'3px', borderTop:'1px solid #000', paddingTop:'3px' }}>CÉDULA DE DETERMINACIÓN CATASTRAL</div>
-                <div style={{ fontSize:'8px', color:'#444' }}>PLANO DE LOCALIZACIÓN, MEDIDAS Y COLINDANCIAS</div>
+              <div style={{flex:1,textAlign:'center'}}>
+                <div style={{fontSize:'11px',fontWeight:'bold'}}>GOBIERNO DEL ESTADO DE MÉXICO</div>
+                <div style={{fontSize:'9px',fontWeight:'bold'}}>SECRETARÍA DE FINANZAS</div>
+                <div style={{fontSize:'8px'}}>DIRECCIÓN GENERAL DE CATASTRO E INFORMACIÓN TERRITORIAL</div>
+                <div style={{fontSize:'13px',fontWeight:'bold',marginTop:'3px',borderTop:'1px solid #000',paddingTop:'3px'}}>CÉDULA DE DETERMINACIÓN CATASTRAL</div>
+                <div style={{fontSize:'8px',color:'#444'}}>PLANO DE LOCALIZACIÓN, MEDIDAS Y COLINDANCIAS</div>
               </div>
-              <div style={{ fontSize:'7px', textAlign:'right', flexShrink:0 }}>
-                <div style={{ border:'1px solid #000', padding:'3px 6px', marginBottom:'3px' }}>
-                  <div style={{ fontWeight:'bold' }}>FOLIO:</div>
-                  <div style={{ fontSize:'8px', fontWeight:'bold' }}>{form.claveCatastral}</div>
+              <div style={{fontSize:'7px',textAlign:'right',flexShrink:0}}>
+                <div style={{border:'1px solid #000',padding:'3px 6px',marginBottom:'3px'}}>
+                  <div style={{fontWeight:'bold'}}>FOLIO:</div>
+                  <div style={{fontSize:'8px',fontWeight:'bold'}}>{form.claveCatastral}</div>
                 </div>
-                <div style={{ border:'1px solid #000', padding:'3px 6px' }}>
-                  <div style={{ fontWeight:'bold' }}>FECHA:</div>
+                <div style={{border:'1px solid #000',padding:'3px 6px'}}>
+                  <div style={{fontWeight:'bold'}}>FECHA:</div>
                   <div>{form.fecha}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Clave */}
-          <div style={{ border:'2px solid #000', padding:'3px', textAlign:'center', marginBottom:'5px', background:'#f0f4f8' }}>
-            <span style={{ fontWeight:'bold', fontSize:'9px' }}>CLAVE CATASTRAL: </span>
-            <span style={{ fontSize:'14px', fontWeight:'bold', letterSpacing:'3px', color:'#003a6e' }}>{form.claveCatastral}</span>
+          <div style={{border:'2px solid #000',padding:'3px',textAlign:'center',marginBottom:'5px',background:'#f0f4f8'}}>
+            <span style={{fontWeight:'bold',fontSize:'9px'}}>CLAVE CATASTRAL: </span>
+            <span style={{fontSize:'14px',fontWeight:'bold',letterSpacing:'3px',color:'#003a6e'}}>{form.claveCatastral}</span>
           </div>
 
-          {/* Cuerpo 2 columnas */}
-          <div style={{ display:'grid', gridTemplateColumns:'220px 1fr', gap:'6px', height:'888px' }}>
+          <div style={{display:'grid',gridTemplateColumns:'220px 1fr',gap:'6px',height:'888px'}}>
 
-            {/* Columna izquierda */}
-            <div style={{ display:'flex', flexDirection:'column', gap:'4px', overflow:'hidden' }}>
-
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            {/* Izquierda */}
+            <div style={{display:'flex',flexDirection:'column',gap:'4px',overflow:'hidden'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead><tr><th colSpan="2" style={thH}>DATOS DEL PROPIETARIO</th></tr></thead>
                 <tbody><tr><td style={tdH}>PROPIETARIO:</td><td style={tdV}>{form.propietario}</td></tr></tbody>
               </table>
-
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead><tr><th colSpan="2" style={thH}>UBICACIÓN DEL PREDIO</th></tr></thead>
                 <tbody>
                   <tr><td style={tdH}>CALLE:</td><td style={tdV}>{form.calle} #{form.numero}</td></tr>
@@ -449,8 +475,7 @@ const App = () => {
                   <tr><td style={tdH}>C.P.:</td><td style={tdV}>{form.codigoPostal}</td></tr>
                 </tbody>
               </table>
-
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead><tr><th colSpan="2" style={thH}>DATOS DEL PREDIO</th></tr></thead>
                 <tbody>
                   <tr><td style={tdH}>SUPERFICIE:</td><td style={{...tdV,fontWeight:'bold',color:'#003a6e',fontSize:'10px'}}>{areaM2.toFixed(2)} M²</td></tr>
@@ -461,8 +486,7 @@ const App = () => {
                   <tr><td style={tdH}>USO SUELO:</td><td style={tdV}>{form.usoSuelo}</td></tr>
                 </tbody>
               </table>
-
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead>
                   <tr><th colSpan="3" style={thH}>LINDEROS Y COLINDANCIAS</th></tr>
                   <tr>
@@ -474,68 +498,51 @@ const App = () => {
                 <tbody>
                   {[{r:'NORTE',m:norteM,c:form.norteColindancia},{r:'SUR',m:surM,c:form.surColindancia},
                     {r:'ORIENTE',m:esteM,c:form.esteColindancia},{r:'PONIENTE',m:oesteM,c:form.oesteColindancia}
-                  ].map(({r,m,c}) => (
-                    <tr key={r}>
-                      <td style={{...tdH,fontSize:'7px'}}>{r}</td>
-                      <td style={{...tdV,textAlign:'center'}}>{m.toFixed(2)}</td>
-                      <td style={tdV}>{c}</td>
-                    </tr>
+                  ].map(({r,m,c})=>(
+                    <tr key={r}><td style={{...tdH,fontSize:'7px'}}>{r}</td><td style={{...tdV,textAlign:'center'}}>{m.toFixed(2)}</td><td style={tdV}>{c}</td></tr>
                   ))}
                 </tbody>
               </table>
-
-              <div style={{ fontSize:'6px', textAlign:'justify', border:'1px solid #ccc', padding:'3px 4px', background:'#fffde7', lineHeight:1.4 }}>
+              <div style={{fontSize:'6px',textAlign:'justify',border:'1px solid #ccc',padding:'3px 4px',background:'#fffde7',lineHeight:1.4}}>
                 <strong>NOTA LEGAL:</strong> Cédula Catastral conforme al Código Financiero del Estado de México y Municipios. Superficie fiscal. No sustituye escritura pública ni plano topográfico.
               </div>
-
-              {/* Perito */}
-              <div style={{ border:'1px solid #000', padding:'5px', textAlign:'center' }}>
-                <div style={{ fontWeight:'bold', fontSize:'6.5px', background:'#003a6e', color:'white', margin:'-5px -5px 6px', padding:'3px' }}>PERITO RESPONSABLE</div>
-                <div style={{ height:'42px' }}/>
-                <div style={{ borderTop:'1px solid #000', paddingTop:'3px', fontSize:'6px' }}>
-                  <div>NOMBRE Y FIRMA</div><div>CÉD. PROFESIONAL</div>
-                </div>
+              <div style={{border:'1px solid #000',padding:'5px',textAlign:'center'}}>
+                <div style={{fontWeight:'bold',fontSize:'6.5px',background:'#003a6e',color:'white',margin:'-5px -5px 6px',padding:'3px'}}>PERITO RESPONSABLE</div>
+                <div style={{height:'42px'}}/>
+                <div style={{borderTop:'1px solid #000',paddingTop:'3px',fontSize:'6px'}}><div>NOMBRE Y FIRMA</div><div>CÉD. PROFESIONAL</div></div>
               </div>
-
-              {/* Autorización */}
-              <div style={{ border:'1px solid #000', padding:'5px', textAlign:'center' }}>
-                <div style={{ fontWeight:'bold', fontSize:'6.5px', background:'#003a6e', color:'white', margin:'-5px -5px 6px', padding:'3px' }}>AUTORIZACIÓN OFICIAL</div>
-                <div style={{ height:'42px' }}/>
-                <div style={{ borderTop:'1px solid #000', paddingTop:'3px', fontSize:'6px' }}>
+              <div style={{border:'1px solid #000',padding:'5px',textAlign:'center'}}>
+                <div style={{fontWeight:'bold',fontSize:'6.5px',background:'#003a6e',color:'white',margin:'-5px -5px 6px',padding:'3px'}}>AUTORIZACIÓN OFICIAL</div>
+                <div style={{height:'42px'}}/>
+                <div style={{borderTop:'1px solid #000',paddingTop:'3px',fontSize:'6px'}}>
                   <div>DIR. DE CATASTRO MUNICIPAL</div>
-                  <div style={{ marginTop:'3px', border:'1px dashed #999', padding:'2px', fontSize:'6px' }}>SELLO OFICIAL</div>
+                  <div style={{marginTop:'3px',border:'1px dashed #999',padding:'2px',fontSize:'6px'}}>SELLO OFICIAL</div>
                 </div>
               </div>
-
-              {/* Vigencia */}
-              <div style={{ border:'1px solid #000', padding:'5px', textAlign:'center', fontSize:'7px' }}>
-                <div style={{ fontWeight:'bold', color:'#003a6e', marginBottom:'2px' }}>VIGENCIA</div>
+              <div style={{border:'1px solid #000',padding:'5px',textAlign:'center',fontSize:'7px'}}>
+                <div style={{fontWeight:'bold',color:'#003a6e',marginBottom:'2px'}}>VIGENCIA</div>
                 <div>Ejercicio Fiscal en Curso</div>
-                <div style={{ fontWeight:'bold', marginTop:'4px', fontSize:'6px' }}>FOLIO ÚNICO:</div>
-                <div style={{ fontWeight:'bold', fontSize:'9px', letterSpacing:'1px', color:'#003a6e' }}>{form.claveCatastral}</div>
+                <div style={{fontWeight:'bold',marginTop:'4px',fontSize:'6px'}}>FOLIO ÚNICO:</div>
+                <div style={{fontWeight:'bold',fontSize:'9px',letterSpacing:'1px',color:'#003a6e'}}>{form.claveCatastral}</div>
               </div>
-
-              {/* Foto horizontal */}
-              <div style={{ height:'105px', flexShrink:0, border:'2px dashed #90a4ae', borderRadius:'4px', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8f9fa' }}>
+              {/* Foto */}
+              <div style={{height:'105px',flexShrink:0,border:'2px dashed #90a4ae',borderRadius:'4px',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',background:'#f8f9fa'}}>
                 {imagenSrc
-                  ? <img src={imagenSrc} alt="terreno" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                  : <div style={{ textAlign:'center' }}>
-                      <div style={{ fontSize:'26px', color:'#ccc' }}>📷</div>
-                      <div style={{ fontSize:'7px', color:'#aaa', marginTop:'3px' }}>Foto / croquis del terreno</div>
-                    </div>
+                  ? <img src={imagenSrc} alt="terreno" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  : <div style={{textAlign:'center'}}><div style={{fontSize:'26px',color:'#ccc'}}>📷</div><div style={{fontSize:'7px',color:'#aaa',marginTop:'3px'}}>Foto / croquis del terreno</div></div>
                 }
               </div>
             </div>
 
-            {/* Columna derecha: croquis COMPLETO */}
-            <div style={{ border:'2px solid #000', background:'#fafcff', display:'flex', flexDirection:'column' }}>
-              <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'7.5px', background:'#003a6e', color:'white', padding:'3px 4px', flexShrink:0 }}>
+            {/* Derecha: croquis */}
+            <div style={{border:'2px solid #000',background:'#fafcff',display:'flex',flexDirection:'column'}}>
+              <div style={{textAlign:'center',fontWeight:'bold',fontSize:'7.5px',background:'#003a6e',color:'white',padding:'3px 4px',flexShrink:0}}>
                 CROQUIS DEL PREDIO — REPRESENTACIÓN GRÁFICA PROPORCIONAL
               </div>
-              <div style={{ display:'flex', justifyContent:'flex-end', padding:'8px 12px 0 0', flexShrink:0 }}>
+              <div style={{display:'flex',justifyContent:'flex-end',padding:'8px 12px 0 0',flexShrink:0}}>
                 <RosaVientos size={85}/>
               </div>
-              <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 8px 8px' }}>
+              <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 8px 8px'}}>
                 <TerrenoCroquis
                   norteM={norteM} surM={surM} esteM={esteM} oesteM={oesteM}
                   norteCol={form.norteColindancia} surCol={form.surColindancia}
@@ -548,12 +555,10 @@ const App = () => {
 
           </div>
 
-          {/* Pie */}
-          <div style={{ marginTop:'4px', borderTop:'2px solid #000', paddingTop:'3px', display:'flex', justifyContent:'space-between', fontSize:'6.5px', color:'#333' }}>
+          <div style={{marginTop:'4px',borderTop:'2px solid #000',paddingTop:'3px',display:'flex',justifyContent:'space-between',fontSize:'6.5px',color:'#333'}}>
             <div>Generado el {form.fecha} | Sistema de Información Catastral | {form.municipio}, {form.estado}</div>
-            <div style={{ fontWeight:'bold' }}>CLAVE: {form.claveCatastral}</div>
+            <div style={{fontWeight:'bold'}}>CLAVE: {form.claveCatastral}</div>
           </div>
-
         </div>
       </div>
     </div>
