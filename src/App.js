@@ -1,100 +1,60 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const ESTADOS = [
-  'AGUASCALIENTES','BAJA CALIFORNIA','BAJA CALIFORNIA SUR','CAMPECHE',
-  'CHIAPAS','CHIHUAHUA','CIUDAD DE MÉXICO','COAHUILA DE ZARAGOZA',
-  'COLIMA','DURANGO','ESTADO DE MÉXICO','GUANAJUATO','GUERRERO',
-  'HIDALGO','JALISCO','MICHOACÁN DE OCAMPO','MORELOS','NAYARIT',
-  'NUEVO LEÓN','OAXACA','PUEBLA','QUERÉTARO','QUINTANA ROO',
-  'SAN LUIS POTOSÍ','SINALOA','SONORA','TABASCO','TAMAULIPAS',
-  'TLAXCALA','VERACRUZ DE IGNACIO DE LA LLAVE','YUCATÁN','ZACATECAS'
+  'AGUASCALIENTES','BAJA CALIFORNIA','BAJA CALIFORNIA SUR','CAMPECHE','CHIAPAS','CHIHUAHUA',
+  'CIUDAD DE MÉXICO','COAHUILA DE ZARAGOZA','COLIMA','DURANGO','ESTADO DE MÉXICO','GUANAJUATO',
+  'GUERRERO','HIDALGO','JALISCO','MICHOACÁN DE OCAMPO','MORELOS','NAYARIT','NUEVO LEÓN',
+  'OAXACA','PUEBLA','QUERÉTARO','QUINTANA ROO','SAN LUIS POTOSÍ','SINALOA','SONORA','TABASCO',
+  'TAMAULIPAS','TLAXCALA','VERACRUZ DE IGNACIO DE LA LLAVE','YUCATÁN','ZACATECAS'
 ];
 const MUNICIPIOS = [
-  'Acambay de Ruíz Castañeda','Acolman','Aculco','Almoloya de Alquisiras',
-  'Almoloya de Juárez','Almoloya del Río','Amanalco','Amatepec','Amecameca',
-  'Apaxco','Atenco','Atizapán','Atizapán de Zaragoza','Atlacomulco',
-  'Atlautla','Axapusco','Ayapango','Calimaya','Capulhuac','Chalco',
-  'Chapa de Mota','Chapultepec','Chiautla','Chicoloapan','Chiconcuac',
-  'Chimalhuacán','Coacalco de Berriozábal','Coatepec Harinas','Cocotitlán',
-  'Coyotepec','Cuautitlán','Cuautitlán Izcalli','Donato Guerra',
-  'Ecatepec de Morelos','Ecatzingo','El Oro','Huehuetoca','Hueypoxtla',
-  'Huixquilucan','Isidro Fabela','Ixtapaluca','Ixtapan de la Sal',
-  'Ixtapan del Oro','Ixtlahuaca','Jaltenco','Jilotepec','Jilotzingo',
-  'Jiquipilco','Jocotitlán','Joquicingo','Juchitepec','La Paz','Lerma',
-  'Luvianos','Malinalco','Melchor Ocampo','Metepec','Mexicaltzingo',
-  'Morelos','Naucalpan de Juárez','Nextlalpan','Nezahualcóyotl',
-  'Nicolás Romero','Nopaltepec','Ocoyoacac','Ocuilan','Otumba',
-  'Otzoloapan','Otzolotepec','Ozumba','Papalotla','Polotitlán','Rayón',
-  'San Antonio la Isla','San Felipe del Progreso','San José del Rincón',
-  'San Martín de las Pirámides','San Mateo Atenco','San Simón de Guerrero',
-  'Santo Tomás','Soyaniquilpan de Juárez','Sultepec','Tecámac','Tejupilco',
-  'Temamatla','Temascalapa','Temascalcingo','Temascaltepec','Temoaya',
-  'Tenancingo','Tenango del Aire','Tenango del Valle','Teoloyucan',
-  'Teotihuacán','Tepetlaoxtoc','Tepetlixpa','Tepotzotlán','Tequixquiac',
-  'Texcaltitlán','Texcalyacac','Texcoco','Tezoyuca','Tianguistenco',
-  'Timilpan','Tlalmanalco','Tlalnepantla de Baz','Tlatlaya','Toluca',
-  'Tonanitla','Tonatico','Tultepec','Tultitlán','Valle de Bravo',
-  'Valle de Chalco Solidaridad','Villa de Allende','Villa del Carbón',
-  'Villa Guerrero','Villa Victoria','Xalatlaco','Xonacatlán',
-  'Zacazonapan','Zacualpan','Zinacantepec','Zumpahuacán','Zumpango'
+  'Acambay de Ruíz Castañeda','Acolman','Aculco','Almoloya de Alquisiras','Almoloya de Juárez',
+  'Almoloya del Río','Amanalco','Amatepec','Amecameca','Apaxco','Atenco','Atizapán',
+  'Atizapán de Zaragoza','Atlacomulco','Atlautla','Axapusco','Ayapango','Calimaya','Capulhuac',
+  'Chalco','Chapa de Mota','Chapultepec','Chiautla','Chicoloapan','Chiconcuac','Chimalhuacán',
+  'Coacalco de Berriozábal','Coatepec Harinas','Cocotitlán','Coyotepec','Cuautitlán',
+  'Cuautitlán Izcalli','Donato Guerra','Ecatepec de Morelos','Ecatzingo','El Oro','Huehuetoca',
+  'Hueypoxtla','Huixquilucan','Isidro Fabela','Ixtapaluca','Ixtapan de la Sal','Ixtapan del Oro',
+  'Ixtlahuaca','Jaltenco','Jilotepec','Jilotzingo','Jiquipilco','Jocotitlán','Joquicingo',
+  'Juchitepec','La Paz','Lerma','Luvianos','Malinalco','Melchor Ocampo','Metepec','Mexicaltzingo',
+  'Morelos','Naucalpan de Juárez','Nextlalpan','Nezahualcóyotl','Nicolás Romero','Nopaltepec',
+  'Ocoyoacac','Ocuilan','Otumba','Otzoloapan','Otzolotepec','Ozumba','Papalotla','Polotitlán',
+  'Rayón','San Antonio la Isla','San Felipe del Progreso','San José del Rincón',
+  'San Martín de las Pirámides','San Mateo Atenco','San Simón de Guerrero','Santo Tomás',
+  'Soyaniquilpan de Juárez','Sultepec','Tecámac','Tejupilco','Temamatla','Temascalapa',
+  'Temascalcingo','Temascaltepec','Temoaya','Tenancingo','Tenango del Aire','Tenango del Valle',
+  'Teoloyucan','Teotihuacán','Tepetlaoxtoc','Tepetlixpa','Tepotzotlán','Tequixquiac',
+  'Texcaltitlán','Texcalyacac','Texcoco','Tezoyuca','Tianguistenco','Timilpan','Tlalmanalco',
+  'Tlalnepantla de Baz','Tlatlaya','Toluca','Tonanitla','Tonatico','Tultepec','Tultitlán',
+  'Valle de Bravo','Valle de Chalco Solidaridad','Villa de Allende','Villa del Carbón',
+  'Villa Guerrero','Villa Victoria','Xalatlaco','Xonacatlán','Zacazonapan','Zacualpan',
+  'Zinacantepec','Zumpahuacán','Zumpango'
 ];
 
-/* ── Geometry solver ────────────────────────────────────────────────────── */
-const cross2D = (O,A,B) => (A.x-O.x)*(B.y-O.y)-(A.y-O.y)*(B.x-O.x);
-const solveQuad = (N,S,E,O) => {
-  N=Math.max(N,0.1);S=Math.max(S,0.1);E=Math.max(E,0.1);O=Math.max(O,0.1);
-  const TL={x:0,y:0}, TR={x:N,y:0};
-  let bestC=null,scoreC=-Infinity,bestA=null,scoreA=-Infinity;
-  for(let deg=91;deg<=269;deg+=0.4){
-    const rad=deg*Math.PI/180;
-    const BR={x:TR.x+E*Math.cos(rad),y:TR.y+E*Math.sin(rad)};
-    const dTLBR=Math.hypot(BR.x-TL.x,BR.y-TL.y);
-    if(dTLBR<Math.abs(O-S)+1e-6||dTLBR>O+S-1e-6)continue;
-    const lx=(dTLBR*dTLBR+O*O-S*S)/(2*dTLBR);
-    const ly2=O*O-lx*lx; if(ly2<0)continue;
-    const ly=Math.sqrt(ly2);
-    const ux=(BR.x-TL.x)/dTLBR, uy=(BR.y-TL.y)/dTLBR;
-    for(const sign of[1,-1]){
-      const BL={x:TL.x+lx*ux-sign*ly*uy,y:TL.y+lx*uy+sign*ly*ux};
-      if(BL.y<=0)continue;
-      const c1=cross2D(TL,TR,BR),c2=cross2D(TR,BR,BL),c3=cross2D(BR,BL,TL),c4=cross2D(BL,TL,TR);
-      const isConvex=c1>0&&c2>0&&c3>0&&c4>0;
-      const height=(BR.y+BL.y)/2;
-      const sym=-Math.abs((TL.x+TR.x+BR.x+BL.x)/4-N/2)*0.05;
-      const score=height+sym;
-      if(isConvex&&score>scoreC){scoreC=score;bestC={TL,TR,BR:{...BR},BL:{...BL},valid:true};}
-      if(score>scoreA){scoreA=score;bestA={TL,TR,BR:{...BR},BL:{...BL},valid:false};}
-    }
-  }
-  if(bestC)return bestC;
-  if(bestA)return {...bestA,valid:false};
-  const h=(O+E)*0.4,dx=(N-S)/2;
-  return{TL,TR,BR:{x:N-dx*0.3,y:h},BL:{x:dx*0.3,y:h},valid:false};
+/* ── Bearing helpers ─────────────────────────────────────────────────────── */
+const toDMS = d => {
+  const deg=Math.floor(d), m=Math.floor((d-deg)*60), s=Math.round(((d-deg)*60-m)*60);
+  return `${deg}°${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}"`;
 };
-
-/* ── DMS & bearing helpers ──────────────────────────────────────────────── */
-const toDMS = (deg) => {
-  const d = Math.floor(deg);
-  const mTot = (deg-d)*60;
-  const m = Math.floor(mTot);
-  const s = Math.round((mTot-m)*60);
-  return `${d}°${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}"`;
+const parseBearing = (cuad, ang) => {
+  const a = parseFloat(ang);
+  if (!ang || isNaN(a) || a < 0 || a > 90) return null;
+  return { NE: a, SE: 180-a, SW: 180+a, NW: 360-a }[cuad] ?? a;
 };
-const calcBearing = (from,to) => {
-  const dx=to.x-from.x, dy=to.y-from.y;
-  let b=Math.atan2(dx,-dy)*180/Math.PI;
+const calcBearing = (from, to) => {
+  let b = Math.atan2(to.x-from.x, -(to.y-from.y)) * 180/Math.PI;
   return ((b%360)+360)%360;
 };
-const fmtB = (b) => {
+const fmtB = b => {
   b=((b%360)+360)%360;
   if(b<=90)  return `N ${toDMS(b)} E`;
   if(b<=180) return `S ${toDMS(180-b)} E`;
   if(b<=270) return `S ${toDMS(b-180)} O`;
   return `N ${toDMS(360-b)} O`;
 };
-const shortB = (b) => {
+const shortB = b => {
   b=((b%360)+360)%360;
   if(b<=90)  return `N ${b.toFixed(1)}° E`;
   if(b<=180) return `S ${(180-b).toFixed(1)}° E`;
@@ -102,10 +62,57 @@ const shortB = (b) => {
   return `N ${(360-b).toFixed(1)}° O`;
 };
 
-/* ── Rosa de vientos ────────────────────────────────────────────────────── */
-const RosaVientos = ({ size=80 }) => {
-  const c=size/2,r=size/2-2;
-  return(
+/* ── Geometry: exact from bearings ──────────────────────────────────────── */
+// In SVG: North=up=negative y → dx=dist·sin(b), dy=−dist·cos(b)
+const stepPt = (p, dist, b_deg) => {
+  const r = b_deg * Math.PI / 180;
+  return { x: p.x + dist*Math.sin(r), y: p.y - dist*Math.cos(r) };
+};
+
+const computeFromBearings = (N, S, E, O, bN, bS, bE, bO) => {
+  const TL = {x:0, y:0};
+  const TR = stepPt(TL, N, bN);
+  const BR = stepPt(TR, E, bE);
+  const BL = stepPt(BR, S, bS);
+  const check = stepPt(BL, O, bO);
+  const closureErr = Math.hypot(check.x - TL.x, check.y - TL.y);
+  return { TL, TR, BR, BL, valid: true, exact: true, closureErr };
+};
+
+/* ── Geometry: auto solver (sweep angles) ───────────────────────────────── */
+const cross2D = (O,A,B) => (A.x-O.x)*(B.y-O.y)-(A.y-O.y)*(B.x-O.x);
+const solveQuad = (N,S,E,O) => {
+  N=Math.max(N,0.1);S=Math.max(S,0.1);E=Math.max(E,0.1);O=Math.max(O,0.1);
+  const TL={x:0,y:0}, TR={x:N,y:0};
+  let bestC=null,sC=-Infinity,bestA=null,sA=-Infinity;
+  for(let deg=91;deg<=269;deg+=0.4){
+    const rad=deg*Math.PI/180;
+    const BR={x:TR.x+E*Math.cos(rad),y:TR.y+E*Math.sin(rad)};
+    const d=Math.hypot(BR.x-TL.x,BR.y-TL.y);
+    if(d<Math.abs(O-S)+1e-6||d>O+S-1e-6)continue;
+    const lx=(d*d+O*O-S*S)/(2*d), ly2=O*O-lx*lx;
+    if(ly2<0)continue;
+    const ly=Math.sqrt(ly2),ux=(BR.x-TL.x)/d,uy=(BR.y-TL.y)/d;
+    for(const sg of[1,-1]){
+      const BL={x:TL.x+lx*ux-sg*ly*uy,y:TL.y+lx*uy+sg*ly*ux};
+      if(BL.y<=0)continue;
+      const c1=cross2D(TL,TR,BR),c2=cross2D(TR,BR,BL),c3=cross2D(BR,BL,TL),c4=cross2D(BL,TL,TR);
+      const cvx=c1>0&&c2>0&&c3>0&&c4>0;
+      const score=(BR.y+BL.y)/2-Math.abs((TL.x+TR.x+BR.x+BL.x)/4-N/2)*0.05;
+      if(cvx&&score>sC){sC=score;bestC={TL,TR,BR:{...BR},BL:{...BL},valid:true,exact:false};}
+      if(score>sA){sA=score;bestA={TL,TR,BR:{...BR},BL:{...BL},valid:false,exact:false};}
+    }
+  }
+  if(bestC)return bestC;
+  if(bestA)return{...bestA,valid:false};
+  const h=(O+E)*0.4,dx=(N-S)/2;
+  return{TL:{x:0,y:0},TR:{x:N,y:0},BR:{x:N-dx*0.3,y:h},BL:{x:dx*0.3,y:h},valid:false,exact:false};
+};
+
+/* ── Rosa de vientos ─────────────────────────────────────────────────────── */
+const RosaVientos = ({size=80}) => {
+  const c=size/2, r=size/2-2;
+  return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} xmlns="http://www.w3.org/2000/svg">
       <circle cx={c} cy={c} r={r} fill="white" stroke="#222" strokeWidth="1.5"/>
       <circle cx={c} cy={c} r={r*0.45} fill="none" stroke="#bbb" strokeWidth="0.8"/>
@@ -122,7 +129,7 @@ const RosaVientos = ({ size=80 }) => {
         const tx=c+Math.cos(rad)*(r-4),ty=c+Math.sin(rad)*(r-4);
         const b1x=c+Math.cos(rad-0.45)*r*0.35,b1y=c+Math.sin(rad-0.45)*r*0.35;
         const b2x=c+Math.cos(rad+0.45)*r*0.35,b2y=c+Math.sin(rad+0.45)*r*0.35;
-        return<polygon key={deg} points={`${tx},${ty} ${b1x},${b1y} ${c},${c} ${b2x},${b2y}`} fill="#bbb" stroke="#999" strokeWidth="0.3"/>;
+        return <polygon key={deg} points={`${tx},${ty} ${b1x},${b1y} ${c},${c} ${b2x},${b2y}`} fill="#bbb" stroke="#999" strokeWidth="0.3"/>;
       })}
       <circle cx={c} cy={c} r={r*0.09} fill="#c00" stroke="#800" strokeWidth="0.8"/>
       <text x={c} y={c-r+13} textAnchor="middle" fontSize={r*0.28} fontWeight="bold" fill="#c00" fontFamily="Arial">N</text>
@@ -133,128 +140,128 @@ const RosaVientos = ({ size=80 }) => {
   );
 };
 
-/* ── Croquis con rotación completa ──────────────────────────────────────── */
-const TerrenoCroquis = ({ norteM,surM,esteM,oesteM,norteCol,surCol,esteCol,oesteCol,usoSuelo,areaM2,svgW,svgH,rotation,onRotate,selected,onSelect }) => {
-  const [dragging,setDragging]=useState(false);
-  const startAngRef=useRef(0), startRotRef=useRef(0);
-  const svgRef=useRef();
+/* ── Croquis ─────────────────────────────────────────────────────────────── */
+const TerrenoCroquis = ({ norteM,surM,esteM,oesteM,norteCol,surCol,esteCol,oesteCol,
+    usoSuelo,areaM2,svgW,svgH,rotation,onRotate,selected,onSelect,
+    bN,bS,bE,bO, frontes }) => {
+
+  const svgRef = useRef();
+  const isDragging = useRef(false);
+  const startAng = useRef(0), startRot = useRef(0);
+  const cx_r = useRef(0), cy_r = useRef(0);
 
   /* Geometry */
-  const PAD_H=92,PAD_V=68;
-  const drawW=svgW-PAD_H*2, drawH=svgH-PAD_V*2-32;
-  const geo=solveQuad(norteM,surM,esteM,oesteM);
-  const {TL:tl,TR:tr,BL:bl,BR:br,valid}=geo;
-  const allX=[tl.x,tr.x,bl.x,br.x],allY=[tl.y,tr.y,bl.y,br.y];
-  const minX=Math.min(...allX),maxX=Math.max(...allX);
-  const minY=Math.min(...allY),maxY=Math.max(...allY);
-  const realW=maxX-minX||1,realH=maxY-minY||1;
-  const scale=Math.min(drawW/realW,drawH/realH);
-  const offX=PAD_H+(drawW-realW*scale)/2-minX*scale;
-  const offY=PAD_V+(drawH-realH*scale)/2-minY*scale;
-  const px=p=>({x:offX+p.x*scale,y:offY+p.y*scale});
+  const PAD=80;
+  const drawW=svgW-PAD*2, drawH=svgH-PAD*2-32;
+  const useExact = bN!==null&&bS!==null&&bE!==null&&bO!==null;
+  const geo = useExact
+    ? computeFromBearings(norteM,surM,esteM,oesteM,bN,bS,bE,bO)
+    : solveQuad(norteM,surM,esteM,oesteM);
+
+  const {TL:tl,TR:tr,BL:bl,BR:br,valid,closureErr} = geo;
+  const allX=[tl.x,tr.x,bl.x,br.x], allY=[tl.y,tr.y,bl.y,br.y];
+  const minX=Math.min(...allX), maxX=Math.max(...allX);
+  const minY=Math.min(...allY), maxY=Math.max(...allY);
+  const rW=maxX-minX||1, rH=maxY-minY||1;
+  const sc=Math.min(drawW/rW, drawH/rH);
+  const oX=PAD+(drawW-rW*sc)/2-minX*sc, oY=PAD+(drawH-rH*sc)/2-minY*sc;
+  const px=p=>({x:oX+p.x*sc,y:oY+p.y*sc});
   const TL=px(tl),TR=px(tr),BL=px(bl),BR=px(br);
 
-  /* Centroid */
-  const cx=(TL.x+TR.x+BR.x+BL.x)/4;
-  const cy=(TL.y+TR.y+BR.y+BL.y)/4;
+  const cx=(TL.x+TR.x+BR.x+BL.x)/4, cy=(TL.y+TR.y+BR.y+BL.y)/4;
+  cx_r.current=cx; cy_r.current=cy;
 
-  /* Rotate a point around centroid */
+  /* Rotation helpers */
   const rotPt=(p,R)=>{
     const rad=R*Math.PI/180,dx=p.x-cx,dy=p.y-cy;
     return{x:cx+dx*Math.cos(rad)-dy*Math.sin(rad),y:cy+dx*Math.sin(rad)+dy*Math.cos(rad)};
   };
-
-  /* Rotated vertices */
   const rTL=rotPt(TL,rotation),rTR=rotPt(TR,rotation);
   const rBL=rotPt(BL,rotation),rBR=rotPt(BR,rotation);
   const rPts=`${rTL.x},${rTL.y} ${rTR.x},${rTR.y} ${rBR.x},${rBR.y} ${rBL.x},${rBL.y}`;
 
-  /* Rotated midpoints */
-  const rMidN=rotPt({x:(TL.x+TR.x)/2,y:(TL.y+TR.y)/2},rotation);
-  const rMidS=rotPt({x:(BL.x+BR.x)/2,y:(BL.y+BR.y)/2},rotation);
-  const rMidE=rotPt({x:(TR.x+BR.x)/2,y:(TR.y+BR.y)/2},rotation);
-  const rMidO=rotPt({x:(TL.x+BL.x)/2,y:(TL.y+BL.y)/2},rotation);
+  const midOf=(A,B)=>({x:(A.x+B.x)/2,y:(A.y+B.y)/2});
+  const rMidN=rotPt(midOf(TL,TR),rotation);
+  const rMidS=rotPt(midOf(BL,BR),rotation);
+  const rMidE=rotPt(midOf(TR,BR),rotation);
+  const rMidO=rotPt(midOf(TL,BL),rotation);
 
-  /* Outward label position from centroid */
-  const outLbl=(p,dist)=>{const dx=p.x-cx,dy=p.y-cy,mag=Math.hypot(dx,dy)||1;return{x:p.x+dx/mag*dist,y:p.y+dy/mag*dist};};
-  const inLbl=(p,dist)=>{const dx=cx-p.x,dy=cy-p.y,mag=Math.hypot(dx,dy)||1;return{x:p.x+dx/mag*dist,y:p.y+dy/mag*dist};};
+  const outDir=(p,dist)=>{const dx=p.x-cx,dy=p.y-cy,mg=Math.hypot(dx,dy)||1;return{x:p.x+dx/mg*dist,y:p.y+dy/mg*dist};};
+  const lblN=outDir(rMidN,30),lblS=outDir(rMidS,30);
+  const lblE=outDir(rMidE,28),lblO=outDir(rMidO,28);
+  const inOf=(p,dist)=>{const dx=cx-p.x,dy=cy-p.y,mg=Math.hypot(dx,dy)||1;return{x:p.x+dx/mg*dist,y:p.y+dy/mg*dist};};
+  const aLT=inOf(rTL,20),aRT=inOf(rTR,20),aRB=inOf(rBR,20),aLB=inOf(rBL,20);
 
-  /* Label positions */
-  const lblN=outLbl(rMidN,28),lblS=outLbl(rMidS,28);
-  const lblE=outLbl(rMidE,26),lblO=outLbl(rMidO,26);
-  const angTL=inLbl(rTL,22),angTR=inLbl(rTR,22);
-  const angBR=inLbl(rBR,22),angBL=inLbl(rBL,22);
-
-  /* Interior angles (invariant under rotation) */
-  const interiorAngle=(A,B,C)=>{
+  /* Interior angles */
+  const intAng=(A,B,C)=>{
     const v1={x:A.x-B.x,y:A.y-B.y},v2={x:C.x-B.x,y:C.y-B.y};
-    const dot=v1.x*v2.x+v1.y*v2.y,mag=Math.hypot(v1.x,v1.y)*Math.hypot(v2.x,v2.y);
-    return Math.acos(Math.min(1,Math.max(-1,dot/mag)))*180/Math.PI;
+    return Math.acos(Math.min(1,Math.max(-1,(v1.x*v2.x+v1.y*v2.y)/(Math.hypot(v1.x,v1.y)*Math.hypot(v2.x,v2.y)))))*180/Math.PI;
   };
-  const aTL=interiorAngle(BL,TL,TR),aTR=interiorAngle(TL,TR,BR);
-  const aBR=interiorAngle(TR,BR,BL),aBL=interiorAngle(BR,BL,TL);
+  const aTL=intAng(BL,TL,TR),aTR=intAng(TL,TR,BR),aBR=intAng(TR,BR,BL),aBL=intAng(BR,BL,TL);
 
-  /* Bearings using rotated coordinates */
-  const bN=calcBearing(rTL,rTR);
-  const bS=calcBearing(rBR,rBL);
-  const bE=calcBearing(rTR,rBR);
-  const bO=calcBearing(rBL,rTL);
+  /* Bearings from rotated coords */
+  const bNd=calcBearing(rTL,rTR),bSd=calcBearing(rBR,rBL);
+  const bEd=calcBearing(rTR,rBR),bOd=calcBearing(rBL,rTL);
 
-  /* Small angle arc at vertex */
-  const arcPath=(V,A,B,r=13)=>{
+  /* Arc path for angle indicator */
+  const arcPath=(V,A,B,r=12)=>{
     const a1=Math.atan2(A.y-V.y,A.x-V.x),a2=Math.atan2(B.y-V.y,B.x-V.x);
     const x1=V.x+r*Math.cos(a1),y1=V.y+r*Math.sin(a1);
     const x2=V.x+r*Math.cos(a2),y2=V.y+r*Math.sin(a2);
-    const bx=Math.cos(a1)+Math.cos(a2),by=Math.sin(a1)+Math.sin(a2);
-    const bisToCenter=bx*(cx-V.x)+by*(cy-V.y)>0;
-    const cross2=Math.cos(a1)*Math.sin(a2)-Math.sin(a1)*Math.cos(a2);
-    let sweep=0,large=0;
-    if(bisToCenter){sweep=cross2>0?1:0;large=0;}
-    else{sweep=cross2>0?0:1;large=1;}
-    return`M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},${sweep} ${x2.toFixed(1)},${y2.toFixed(1)}`;
+    const c2=Math.cos(a1)*Math.sin(a2)-Math.sin(a1)*Math.cos(a2);
+    return`M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 0,${c2>0?1:0} ${x2.toFixed(1)},${y2.toFixed(1)}`;
   };
 
   /* Rotation handle */
-  const maxR=Math.max(Math.hypot(TL.x-cx,TL.y-cy),Math.hypot(TR.x-cx,TR.y-cy),Math.hypot(BL.x-cx,BL.y-cy),Math.hypot(BR.x-cx,BR.y-cy));
-  const handleRad=maxR+32;
-  const handleAng=(rotation-90)*Math.PI/180;
-  const handleX=cx+handleRad*Math.cos(handleAng);
-  const handleY=cy+handleRad*Math.sin(handleAng);
+  const maxR=Math.max(Math.hypot(TL.x-cx,TL.y-cy),Math.hypot(TR.x-cx,TR.y-cy),
+    Math.hypot(BL.x-cx,BL.y-cy),Math.hypot(BR.x-cx,BR.y-cy));
+  const hRad=maxR+36;
+  const hAng=(rotation-90)*Math.PI/180;
+  const hX=cx+hRad*Math.cos(hAng), hY=cy+hRad*Math.sin(hAng);
 
-  /* SVG coordinate helper */
-  const svgPt=(e)=>{
-    const svg=svgRef.current;
-    const pt=svg.createSVGPoint();
-    pt.x=e.clientX;pt.y=e.clientY;
-    return pt.matrixTransform(svg.getScreenCTM().inverse());
-  };
+  /* SVG coordinate converter */
+  const toSVG=useCallback((cX,cY)=>{
+    const svg=svgRef.current; if(!svg)return{x:0,y:0};
+    const rect=svg.getBoundingClientRect(), vb=svg.viewBox.baseVal;
+    return{x:(cX-rect.left)*(vb.width/rect.width), y:(cY-rect.top)*(vb.height/rect.height)};
+  },[]);
 
-  const onHandleDown=(e)=>{
+  /* Window-level drag handlers — fixes the stuck-drag bug */
+  useEffect(()=>{
+    const onMove=e=>{
+      if(!isDragging.current)return;
+      const pt=toSVG(e.clientX,e.clientY);
+      const ang=Math.atan2(pt.y-cy_r.current,pt.x-cx_r.current)*180/Math.PI;
+      const delta=ang-startAng.current;
+      onRotate(((startRot.current+delta)%360+360)%360);
+    };
+    const onUp=()=>{isDragging.current=false;};
+    window.addEventListener('mousemove',onMove);
+    window.addEventListener('mouseup',onUp);
+    return()=>{window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp);};
+  },[toSVG,onRotate]);
+
+  const onHandleDown=e=>{
     e.preventDefault();e.stopPropagation();
-    const pt=svgPt(e);
-    startAngRef.current=Math.atan2(pt.y-cy,pt.x-cx)*180/Math.PI;
-    startRotRef.current=rotation;
-    setDragging(true);
+    isDragging.current=true;
+    const pt=toSVG(e.clientX,e.clientY);
+    startAng.current=Math.atan2(pt.y-cy_r.current,pt.x-cx_r.current)*180/Math.PI;
+    startRot.current=rotation;
   };
-  const onMove=(e)=>{
-    if(!dragging)return;
-    const pt=svgPt(e);
-    const ang=Math.atan2(pt.y-cy,pt.x-cx)*180/Math.PI;
-    const delta=ang-startAngRef.current;
-    onRotate(((startRotRef.current+delta)%360+360)%360);
-  };
-  const onUp=()=>setDragging(false);
 
   const trunc=(s,n)=>s&&s.length>n?s.slice(0,n)+'…':(s||'');
   const scaleBarM=Math.max(Math.round(Math.max(norteM,surM)/4/5)*5,5);
-  const scaleBarPx=scaleBarM*scale;
-  const scaleY=svgH-18;
-  const stroke=valid?'#003a6e':'#e67e00';
+  const scaleBarPx=scaleBarM*sc;
+  const scaleY=svgH-16;
 
-  return(
+  /* Frente colors */
+  const sideColor=(key,def='#003a6e')=>frontes.has(key)?'#1a7a1a':def;
+  const sideWidth=(key)=>frontes.has(key)?3.5:2.4;
+  const sideDash=(key,isValid)=>frontes.has(key)?'none':(isValid?'none':'6,3');
+
+  return (
     <svg ref={svgRef} width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
-      onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
-      style={{display:'block',width:'100%',height:'100%',cursor:dragging?'grabbing':'default'}}
+      style={{display:'block',width:'100%',height:'100%'}}
       xmlns="http://www.w3.org/2000/svg">
       <defs>
         <pattern id="gr" width="14" height="14" patternUnits="userSpaceOnUse">
@@ -264,173 +271,222 @@ const TerrenoCroquis = ({ norteM,surM,esteM,oesteM,norteCol,surCol,esteCol,oeste
           <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(0,74,143,0.07)" strokeWidth="5"/>
         </pattern>
         <clipPath id="tc6"><polygon points={rPts}/></clipPath>
+        {/* Frente street pattern */}
+        <pattern id="street" width="10" height="10" patternUnits="userSpaceOnUse">
+          <rect width="10" height="10" fill="#e8f5e9"/>
+          <line x1="0" y1="5" x2="10" y2="5" stroke="#a5d6a7" strokeWidth="1"/>
+        </pattern>
       </defs>
 
       <rect width={svgW} height={svgH} fill="url(#gr)"/>
-
-      {/* Terrain fill */}
       <polygon points={rPts} fill="rgba(200,225,245,0.55)"/>
       <rect width={svgW} height={svgH} fill="url(#ht)" clipPath="url(#tc6)"/>
 
-      {/* Terrain outline */}
-      <polygon points={rPts} fill="none" stroke={stroke} strokeWidth="2.4"
-        strokeDasharray={valid?'none':'6,3'}
-        onDoubleClick={()=>onSelect(!selected)}
-        style={{cursor:'pointer'}}/>
+      {/* Individual sides colored by frente status */}
+      {[
+        {k:'norte',A:rTL,B:rTR},
+        {k:'sur',  A:rBR,B:rBL},
+        {k:'este', A:rTR,B:rBR},
+        {k:'oeste',A:rBL,B:rTL},
+      ].map(({k,A,B})=>(
+        <line key={k} x1={A.x} y1={A.y} x2={B.x} y2={B.y}
+          stroke={sideColor(k)} strokeWidth={sideWidth(k)}
+          strokeDasharray={sideDash(k,valid)}/>
+      ))}
 
-      {/* Norte side in RED */}
-      <line x1={rTL.x} y1={rTL.y} x2={rTR.x} y2={rTR.y} stroke="#c00" strokeWidth="2.8"/>
+      {/* Norte always in red too (on top) */}
+      <line x1={rTL.x} y1={rTL.y} x2={rTR.x} y2={rTR.y}
+        stroke={frontes.has('norte')?'#1a7a1a':'#c00'} strokeWidth="2.8"/>
+
+      {/* Street indicator arrows for frontes */}
+      {[
+        {k:'norte',mid:rMidN,dir:outDir(rMidN,18)},
+        {k:'sur',  mid:rMidS,dir:outDir(rMidS,18)},
+        {k:'este', mid:rMidE,dir:outDir(rMidE,18)},
+        {k:'oeste',mid:rMidO,dir:outDir(rMidO,18)},
+      ].filter(({k})=>frontes.has(k)).map(({k,mid,dir})=>(
+        <g key={k}>
+          <line x1={mid.x} y1={mid.y} x2={dir.x} y2={dir.y} stroke="#1a7a1a" strokeWidth="1.5" markerEnd="url(#arrow)"/>
+          <rect x={dir.x-16} y={dir.y-8} width={32} height={14} rx="3" fill="#1a7a1a" opacity="0.85"/>
+          <text x={dir.x} y={dir.y+4} textAnchor="middle" fontSize="6.5" fill="white" fontFamily="Arial" fontWeight="bold">CALLE</text>
+        </g>
+      ))}
+      <defs>
+        <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#1a7a1a"/>
+        </marker>
+      </defs>
 
       {/* Vertices */}
-      {[rTL,rTR,rBR,rBL].map((p,i)=>
-        <circle key={i} cx={p.x} cy={p.y} r="4.5" fill={stroke} stroke="white" strokeWidth="1.2"/>
-      )}
+      {[rTL,rTR,rBR,rBL].map((p,i)=>(
+        <circle key={i} cx={p.x} cy={p.y} r="4.5" fill={valid?'#003a6e':'#e67e00'} stroke="white" strokeWidth="1.2"/>
+      ))}
 
-      {/* Angle arcs at each vertex */}
-      <path d={arcPath(rTL,rTR,rBL)} fill="none" stroke="#003a6e" strokeWidth="1"/>
-      <path d={arcPath(rTR,rTL,rBR)} fill="none" stroke="#003a6e" strokeWidth="1"/>
-      <path d={arcPath(rBR,rTR,rBL)} fill="none" stroke="#003a6e" strokeWidth="1"/>
-      <path d={arcPath(rBL,rBR,rTL)} fill="none" stroke="#003a6e" strokeWidth="1"/>
+      {/* Angle arcs */}
+      <path d={arcPath(rTL,rTR,rBL)} fill="none" stroke="#003a6e" strokeWidth="0.9"/>
+      <path d={arcPath(rTR,rTL,rBR)} fill="none" stroke="#003a6e" strokeWidth="0.9"/>
+      <path d={arcPath(rBR,rTR,rBL)} fill="none" stroke="#003a6e" strokeWidth="0.9"/>
+      <path d={arcPath(rBL,rBR,rTL)} fill="none" stroke="#003a6e" strokeWidth="0.9"/>
+      <text x={aLT.x} y={aLT.y+4} textAnchor="middle" fontSize="7.5" fill="#003a6e" fontFamily="Arial" fontWeight="bold">{aTL.toFixed(1)}°</text>
+      <text x={aRT.x} y={aRT.y+4} textAnchor="middle" fontSize="7.5" fill="#003a6e" fontFamily="Arial" fontWeight="bold">{aTR.toFixed(1)}°</text>
+      <text x={aRB.x} y={aRB.y+4} textAnchor="middle" fontSize="7.5" fill="#003a6e" fontFamily="Arial" fontWeight="bold">{aBR.toFixed(1)}°</text>
+      <text x={aLB.x} y={aLB.y+4} textAnchor="middle" fontSize="7.5" fill="#003a6e" fontFamily="Arial" fontWeight="bold">{aBL.toFixed(1)}°</text>
 
-      {/* Angle values at vertices */}
-      <text x={angTL.x} y={angTL.y} textAnchor="middle" fontSize="8" fill="#003a6e" fontFamily="Arial" fontWeight="bold">{aTL.toFixed(1)}°</text>
-      <text x={angTR.x} y={angTR.y} textAnchor="middle" fontSize="8" fill="#003a6e" fontFamily="Arial" fontWeight="bold">{aTR.toFixed(1)}°</text>
-      <text x={angBR.x} y={angBR.y} textAnchor="middle" fontSize="8" fill="#003a6e" fontFamily="Arial" fontWeight="bold">{aBR.toFixed(1)}°</text>
-      <text x={angBL.x} y={angBL.y} textAnchor="middle" fontSize="8" fill="#003a6e" fontFamily="Arial" fontWeight="bold">{aBL.toFixed(1)}°</text>
-
-      {/* Measurement + colindancia labels (outside, horizontal) */}
-      {/* Norte */}
-      <text x={lblN.x} y={lblN.y-13} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#c00" fontFamily="Arial">{norteM.toFixed(2)} m</text>
-      <text x={lblN.x} y={lblN.y-2}  textAnchor="middle" fontSize="7.5" fill="#555" fontFamily="Arial">{trunc(norteCol,24)}</text>
-      <text x={lblN.x} y={lblN.y+9}  textAnchor="middle" fontSize="7" fill="#777" fontFamily="Arial">{shortB(bN)}</text>
+      {/* Labels Norte */}
+      <text x={lblN.x} y={lblN.y-14} textAnchor="middle" fontSize="11" fontWeight="bold" fill={frontes.has('norte')?'#1a7a1a':'#c00'} fontFamily="Arial">{norteM.toFixed(2)} m</text>
+      <text x={lblN.x} y={lblN.y-2}  textAnchor="middle" fontSize="7.5" fill="#444" fontFamily="Arial">{trunc(norteCol,24)}</text>
+      <text x={lblN.x} y={lblN.y+9}  textAnchor="middle" fontSize="7" fill="#777" fontFamily="Arial">{shortB(bNd)}</text>
       {/* Sur */}
-      <text x={lblS.x} y={lblS.y+4}  textAnchor="middle" fontSize="11" fontWeight="bold" fill="#333" fontFamily="Arial">{surM.toFixed(2)} m</text>
-      <text x={lblS.x} y={lblS.y+15} textAnchor="middle" fontSize="7.5" fill="#555" fontFamily="Arial">{trunc(surCol,24)}</text>
-      <text x={lblS.x} y={lblS.y+25} textAnchor="middle" fontSize="7" fill="#777" fontFamily="Arial">{shortB(bS)}</text>
+      <text x={lblS.x} y={lblS.y+5}  textAnchor="middle" fontSize="11" fontWeight="bold" fill={frontes.has('sur')?'#1a7a1a':'#333'} fontFamily="Arial">{surM.toFixed(2)} m</text>
+      <text x={lblS.x} y={lblS.y+16} textAnchor="middle" fontSize="7.5" fill="#444" fontFamily="Arial">{trunc(surCol,24)}</text>
+      <text x={lblS.x} y={lblS.y+27} textAnchor="middle" fontSize="7" fill="#777" fontFamily="Arial">{shortB(bSd)}</text>
       {/* Este */}
-      <text x={lblE.x} y={lblE.y-4} fontSize="10" fontWeight="bold" fill="#333" fontFamily="Arial">{esteM.toFixed(2)} m</text>
-      <text x={lblE.x} y={lblE.y+7} fontSize="7" fill="#777" fontFamily="Arial">{shortB(bE)}</text>
+      <text x={lblE.x} y={lblE.y-5}  fontSize="10" fontWeight="bold" fill={frontes.has('este')?'#1a7a1a':'#333'} fontFamily="Arial">{esteM.toFixed(2)} m</text>
+      <text x={lblE.x} y={lblE.y+7}  fontSize="7" fill="#777" fontFamily="Arial">{shortB(bEd)}</text>
       {/* Oeste */}
-      <text x={lblO.x} y={lblO.y-4} textAnchor="end" fontSize="10" fontWeight="bold" fill="#333" fontFamily="Arial">{oesteM.toFixed(2)} m</text>
-      <text x={lblO.x} y={lblO.y+7} textAnchor="end" fontSize="7" fill="#777" fontFamily="Arial">{shortB(bO)}</text>
+      <text x={lblO.x} y={lblO.y-5}  textAnchor="end" fontSize="10" fontWeight="bold" fill={frontes.has('oeste')?'#1a7a1a':'#333'} fontFamily="Arial">{oesteM.toFixed(2)} m</text>
+      <text x={lblO.x} y={lblO.y+7}  textAnchor="end" fontSize="7" fill="#777" fontFamily="Arial">{shortB(bOd)}</text>
 
-      {/* Center labels */}
+      {/* Center */}
       <text x={cx} y={cy-16} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#003a6e" fontFamily="Arial">TERRENO</text>
-      <text x={cx} y={cy+6}  textAnchor="middle" fontSize="18" fontWeight="bold" fill="#000"    fontFamily="Arial">{areaM2.toFixed(2)} m²</text>
-      <text x={cx} y={cy+22} textAnchor="middle" fontSize="10" fill="#555"                      fontFamily="Arial">{usoSuelo}</text>
+      <text x={cx} y={cy+5}  textAnchor="middle" fontSize="18" fontWeight="bold" fill="#000" fontFamily="Arial">{areaM2.toFixed(2)} m²</text>
+      <text x={cx} y={cy+21} textAnchor="middle" fontSize="9" fill="#555" fontFamily="Arial">{usoSuelo}</text>
 
-      {/* Inconsistency warning */}
-      {!valid&&(
+      {/* Closure error notice */}
+      {useExact && closureErr > 0.5 && (
         <g>
-          <rect x={svgW/2-140} y={6} width={280} height={22} rx="4" fill="#fff3cd" stroke="#e67e00" strokeWidth="1.2"/>
-          <text x={svgW/2} y={21} textAnchor="middle" fontSize="9.5" fill="#a05000" fontFamily="Arial" fontWeight="bold">⚠ Medidas inconsistentes — representación aproximada</text>
+          <rect x={4} y={svgH-38} width={200} height={16} rx="3" fill="#fff8e1" stroke="#ffa000" strokeWidth="1"/>
+          <text x={10} y={svgH-27} fontSize="7.5" fill="#7f5000" fontFamily="Arial">⚠ Error de cierre: {closureErr.toFixed(2)} m (normal en levantamientos)</text>
+        </g>
+      )}
+      {!valid && !useExact && (
+        <g>
+          <rect x={svgW/2-135} y={6} width={270} height={20} rx="4" fill="#fff3cd" stroke="#e67e00" strokeWidth="1.2"/>
+          <text x={svgW/2} y={20} textAnchor="middle" fontSize="9" fill="#a05000" fontFamily="Arial" fontWeight="bold">⚠ Medidas sin solución exacta — ingrese rumbos</text>
         </g>
       )}
 
       {/* Scale bar */}
-      <rect x={PAD_H} y={scaleY-7} width={scaleBarPx} height={8} fill="none" stroke="#333" strokeWidth="1"/>
-      <rect x={PAD_H} y={scaleY-7} width={scaleBarPx/2} height={8} fill="#333"/>
-      <text x={PAD_H}              y={scaleY+10} fontSize="7.5" fill="#333" fontFamily="Arial">0</text>
-      <text x={PAD_H+scaleBarPx/2} y={scaleY+10} textAnchor="middle" fontSize="7.5" fill="#333" fontFamily="Arial">{scaleBarM/2}m</text>
-      <text x={PAD_H+scaleBarPx}   y={scaleY+10} textAnchor="middle" fontSize="7.5" fill="#333" fontFamily="Arial">{scaleBarM}m</text>
+      <rect x={PAD} y={scaleY-7} width={scaleBarPx} height={8} fill="none" stroke="#333" strokeWidth="1"/>
+      <rect x={PAD} y={scaleY-7} width={scaleBarPx/2} height={8} fill="#333"/>
+      <text x={PAD}              y={scaleY+10} fontSize="7.5" fill="#333" fontFamily="Arial">0</text>
+      <text x={PAD+scaleBarPx/2} y={scaleY+10} textAnchor="middle" fontSize="7.5" fill="#333" fontFamily="Arial">{scaleBarM/2}m</text>
+      <text x={PAD+scaleBarPx}   y={scaleY+10} textAnchor="middle" fontSize="7.5" fill="#333" fontFamily="Arial">{scaleBarM}m</text>
 
-      {/* ── ROTATION UI (only when selected) ── */}
-      {selected&&(
+      {/* Rotation UI */}
+      {selected && (
         <g>
-          {/* Orbit dashed circle */}
-          <circle cx={cx} cy={cy} r={handleRad} fill="none" stroke="#0066cc" strokeWidth="1.5" strokeDasharray="5,3" opacity="0.7"/>
-          {/* North indicator line inside orbit */}
-          <line x1={cx} y1={cy} x2={cx} y2={cy-handleRad+5} stroke="#0066cc" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.5"/>
-          {/* Rotation handle knob */}
-          <circle cx={handleX} cy={handleY} r="13" fill="#0066cc" stroke="white" strokeWidth="2"
+          <circle cx={cx} cy={cy} r={hRad} fill="none" stroke="#0066cc" strokeWidth="1.5" strokeDasharray="5,3" opacity="0.7"/>
+          <line x1={cx} y1={cy} x2={cx} y2={cy-hRad+4} stroke="#0066cc" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.4"/>
+          <circle cx={hX} cy={hY} r="14" fill="#0066cc" stroke="white" strokeWidth="2"
             style={{cursor:'grab'}} onMouseDown={onHandleDown}/>
-          <text x={handleX} y={handleY+5} textAnchor="middle" fontSize="14" fill="white" fontFamily="Arial"
-            style={{userSelect:'none',pointerEvents:'none'}}>↻</text>
-          {/* Rotation angle badge */}
-          <rect x={cx-38} y={cy-38} width={76} height={18} rx="4" fill="#0066cc" opacity="0.9"/>
-          <text x={cx} y={cy-25} textAnchor="middle" fontSize="9" fill="white" fontFamily="Arial" fontWeight="bold">
-            {shortB(bN)} ({rotation.toFixed(1)}°)
+          <text x={hX} y={hY+5} textAnchor="middle" fontSize="16" fill="white" style={{userSelect:'none',pointerEvents:'none'}}>↻</text>
+          <rect x={cx-46} y={cy-36} width={92} height={18} rx="4" fill="#0066cc" opacity="0.9"/>
+          <text x={cx} y={cy-23} textAnchor="middle" fontSize="8.5" fill="white" fontFamily="Arial" fontWeight="bold">
+            {shortB(bNd)} · {rotation.toFixed(1)}°
           </text>
-          {/* Help text */}
-          <rect x={svgW/2-110} y={svgH-48} width={220} height={14} rx="3" fill="#0066cc" opacity="0.8"/>
-          <text x={svgW/2} y={svgH-38} textAnchor="middle" fontSize="7.5" fill="white" fontFamily="Arial">
-            Arrastre ↻ para girar · Doble clic para deseleccionar
+          <rect x={svgW/2-120} y={svgH-50} width={240} height={15} rx="3" fill="#0066cc" opacity="0.8"/>
+          <text x={svgW/2} y={svgH-39} textAnchor="middle" fontSize="7.5" fill="white" fontFamily="Arial">
+            Arrastre ↻ para girar · Doble clic para salir
           </text>
         </g>
       )}
-      {/* Selection hint when not selected */}
-      {!selected&&(
-        <text x={svgW/2} y={svgH-8} textAnchor="middle" fontSize="7" fill="#aaa" fontFamily="Arial">
-          Doble clic en el terreno para girar
+      {!selected && (
+        <text x={svgW/2} y={svgH-4} textAnchor="middle" fontSize="7" fill="#bbb" fontFamily="Arial"
+          style={{cursor:'pointer'}} onDoubleClick={()=>onSelect(true)}>
+          Doble clic en el terreno para activar rotación
         </text>
       )}
+      {/* Invisible overlay for double-click on terrain */}
+      <polygon points={rPts} fill="transparent" stroke="none"
+        onDoubleClick={()=>onSelect(!selected)} style={{cursor:'pointer'}}/>
     </svg>
   );
 };
 
 /* ── App ─────────────────────────────────────────────────────────────────── */
 const App = () => {
-  const printRef=useRef();
-  const [rotation,setRotation]=useState(0);
-  const [selected,setSelected]=useState(false);
-  const [form,setForm]=useState({
-    claveCatastral:'15-001-002-003-04',propietario:'JUAN PÉREZ LÓPEZ',
-    calle:'CALLE DE LOS ARCOS',numero:'123',colonia:'COL. CENTRO',
-    codigoPostal:'54000',municipio:'TLALNEPANTLA DE BAZ',
-    estado:'ESTADO DE MÉXICO',usoSuelo:'HABITACIONAL',unidadMedida:'metros',
-    norteMedida:'50.00',norteColindancia:'CALLE SIN NOMBRE',
-    surMedida:'12.00',surColindancia:'TERRENO COLINDANTE',
-    esteMedida:'30.00',esteColindancia:'CASA HABITACIÓN',
-    oesteMedida:'30.00',oesteColindancia:'AV. PRINCIPAL',
-    fecha:new Date().toLocaleDateString('es-MX'),
-  });
-  const [munQuery,setMunQuery]=useState('Tlalnepantla de Baz');
-  const [munSug,setMunSug]=useState([]);
-  const [showMun,setShowMun]=useState(false);
-  const [imagenSrc,setImagenSrc]=useState(null);
+  const printRef = useRef();
+  const [rotation, setRotation] = useState(0);
+  const [selected, setSelected] = useState(false);
+  const [frontes, setFrontes] = useState(new Set(['norte']));
+  const [munQuery, setMunQuery] = useState('Tlalnepantla de Baz');
+  const [munSug, setMunSug] = useState([]);
+  const [showMun, setShowMun] = useState(false);
+  const [imagenSrc, setImagenSrc] = useState(null);
 
-  const handleChange=e=>setForm(f=>({...f,[e.target.name]:e.target.value}));
-  const handleMunInput=e=>{
-    const val=e.target.value;setMunQuery(val);
+  const [form, setForm] = useState({
+    claveCatastral:'15-001-002-003-04', propietario:'JUAN PÉREZ LÓPEZ',
+    calle:'CALLE DE LOS ARCOS', numero:'123', colonia:'COL. CENTRO',
+    codigoPostal:'54000', municipio:'TLALNEPANTLA DE BAZ',
+    estado:'ESTADO DE MÉXICO', usoSuelo:'HABITACIONAL', unidadMedida:'metros',
+    /* Medidas */
+    norteMedida:'21.00', norteColindancia:'CALLE PRIMERO DE MAYO',
+    surMedida:'23.40',   surColindancia:'YESENIA ESPINOSA ARTEAGA',
+    esteMedida:'37.00',  esteColindancia:'CALLE PRIVADA DE 4 METROS',
+    oesteMedida:'24.00', oesteColindancia:'YESENIA ESPINOSA ARTEAGA',
+    /* Rumbos opcionales: cuadrante + ángulo */
+    norteCuad:'NE', norteAng:'57.51',
+    surCuad:'NW',   surAng:'65.04',
+    esteCuad:'SE',  esteAng:'24.04',
+    oesteCuad:'NW', oesteAng:'23.13',
+    fecha: new Date().toLocaleDateString('es-MX'),
+  });
+
+  const handleChange = e => setForm(f => ({...f, [e.target.name]: e.target.value}));
+
+  const handleMunInput = e => {
+    const val = e.target.value; setMunQuery(val);
     if(val.length>0){setMunSug(MUNICIPIOS.filter(m=>m.toLowerCase().includes(val.toLowerCase())).slice(0,8));setShowMun(true);}
     else setShowMun(false);
   };
-  const selectMun=m=>{setMunQuery(m);setForm(f=>({...f,municipio:m.toUpperCase()}));setShowMun(false);};
-  const handleImagen=e=>{
-    const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();reader.onload=ev=>setImagenSrc(ev.target.result);reader.readAsDataURL(file);
+  const selectMun = m => {setMunQuery(m);setForm(f=>({...f,municipio:m.toUpperCase()}));setShowMun(false);};
+
+  const handleImagen = e => {
+    const file=e.target.files[0]; if(!file)return;
+    const reader=new FileReader(); reader.onload=ev=>setImagenSrc(ev.target.result); reader.readAsDataURL(file);
   };
-  const toM=val=>{
+
+  const toM = val => {
     const v=parseFloat(val)||0;
-    if(form.unidadMedida==='varas')return v*0.838;
-    if(form.unidadMedida==='pies') return v*0.3048;
+    if(form.unidadMedida==='varas') return v*0.838;
+    if(form.unidadMedida==='pies')  return v*0.3048;
     return v;
   };
-  const norteM=toM(form.norteMedida),surM=toM(form.surMedida);
-  const esteM=toM(form.esteMedida),oesteM=toM(form.oesteMedida);
-  const areaM2=((norteM+surM)/2)*((esteM+oesteM)/2);
-  const geoCheck=solveQuad(norteM,surM,esteM,oesteM);
 
-  // Bearings for plano table (using rotation)
-  const geo=geoCheck;
-  const PAD_H=92,PAD_V=68,CROQUIS_W=540,CROQUIS_H=700;
-  const drawW=CROQUIS_W-PAD_H*2,drawH=CROQUIS_H-PAD_V*2-32;
+  const norteM=toM(form.norteMedida), surM=toM(form.surMedida);
+  const esteM=toM(form.esteMedida),   oesteM=toM(form.oesteMedida);
+  const areaM2=((norteM+surM)/2)*((esteM+oesteM)/2);
+
+  /* Parsed bearings */
+  const bN=parseBearing(form.norteCuad, form.norteAng);
+  const bS=parseBearing(form.surCuad,   form.surAng);
+  const bE=parseBearing(form.esteCuad,  form.esteAng);
+  const bO=parseBearing(form.oesteCuad, form.oesteAng);
+  const useExact=bN!==null&&bS!==null&&bE!==null&&bO!==null;
+
+  /* Bearings for table (after rotation) */
+  const geo = useExact
+    ? computeFromBearings(norteM,surM,esteM,oesteM,bN,bS,bE,bO)
+    : solveQuad(norteM,surM,esteM,oesteM);
+  const PAD=80, CW=540, CH=700;
+  const drawW=CW-PAD*2, drawH=CH-PAD*2-32;
   const{TL:tl,TR:tr,BL:bl,BR:br}=geo;
-  const allX=[tl.x,tr.x,bl.x,br.x],allY=[tl.y,tr.y,bl.y,br.y];
-  const minX=Math.min(...allX),maxX=Math.max(...allX),minY=Math.min(...allY),maxY=Math.max(...allY);
-  const sc=Math.min(drawW/(maxX-minX||1),drawH/(maxY-minY||1));
-  const oX=PAD_H+(drawW-(maxX-minX)*sc)/2-minX*sc,oY=PAD_V+(drawH-(maxY-minY)*sc)/2-minY*sc;
-  const px2=p=>({x:oX+p.x*sc,y:oY+p.y*sc});
+  const allXt=[tl.x,tr.x,bl.x,br.x],allYt=[tl.y,tr.y,bl.y,br.y];
+  const minXt=Math.min(...allXt),maxXt=Math.max(...allXt),minYt=Math.min(...allYt),maxYt=Math.max(...allYt);
+  const sct=Math.min(drawW/(maxXt-minXt||1),drawH/(maxYt-minYt||1));
+  const oXt=PAD+(drawW-(maxXt-minXt)*sct)/2-minXt*sct, oYt=PAD+(drawH-(maxYt-minYt)*sct)/2-minYt*sct;
+  const px2=p=>({x:oXt+p.x*sct,y:oYt+p.y*sct});
   const TL2=px2(tl),TR2=px2(tr),BL2=px2(bl),BR2=px2(br);
   const cx2=(TL2.x+TR2.x+BR2.x+BL2.x)/4,cy2=(TL2.y+TR2.y+BR2.y+BL2.y)/4;
   const rotPt2=(p,R)=>{const rad=R*Math.PI/180,dx=p.x-cx2,dy=p.y-cy2;return{x:cx2+dx*Math.cos(rad)-dy*Math.sin(rad),y:cy2+dx*Math.sin(rad)+dy*Math.cos(rad)};};
   const rTL2=rotPt2(TL2,rotation),rTR2=rotPt2(TR2,rotation),rBL2=rotPt2(BL2,rotation),rBR2=rotPt2(BR2,rotation);
-  const bN=calcBearing(rTL2,rTR2),bS=calcBearing(rBR2,rBL2),bE=calcBearing(rTR2,rBR2),bO=calcBearing(rBL2,rTL2);
+  const bNd=calcBearing(rTL2,rTR2),bSd=calcBearing(rBR2,rBL2),bEd=calcBearing(rTR2,rBR2),bOd=calcBearing(rBL2,rTL2);
 
-  const handlePrint=async()=>{
+  const handlePrint = async () => {
     setSelected(false);
-    await new Promise(r=>setTimeout(r,80));
-    const el=printRef.current;if(!el)return;
+    await new Promise(r=>setTimeout(r,100));
+    const el=printRef.current; if(!el)return;
     try{
       const canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
       const img=canvas.toDataURL('image/png');
@@ -440,6 +496,8 @@ const App = () => {
     }catch(err){console.error(err);}
   };
 
+  const toggleFrente = key => setFrontes(prev=>{const n=new Set(prev);n.has(key)?n.delete(key):n.add(key);return n;});
+
   const lbl={fontWeight:'bold',fontSize:'11px',marginBottom:'3px',display:'block',color:'#333'};
   const inp={padding:'7px 9px',border:'1px solid #bbb',borderRadius:'3px',fontSize:'13px',width:'100%',boxSizing:'border-box',fontFamily:'Arial'};
   const sec={color:'#004a8f',borderBottom:'2px solid #004a8f',paddingBottom:'4px',marginBottom:'12px',marginTop:'18px',fontSize:'13px',fontWeight:'bold'};
@@ -447,10 +505,17 @@ const App = () => {
   const tdV={border:'1px solid #000',padding:'2px 3px',fontSize:'7px'};
   const thH={background:'#003a6e',color:'white',padding:'3px 4px',textAlign:'center',fontSize:'6.5px',fontWeight:'bold'};
 
-  return(
+  const SIDES = [
+    {key:'norte',label:'⬆ NORTE',color:'#c00',med:'norteMedida',col:'norteColindancia',cuad:'norteCuad',ang:'norteAng'},
+    {key:'sur',  label:'⬇ SUR',  color:'#444',med:'surMedida',  col:'surColindancia',  cuad:'surCuad',  ang:'surAng'},
+    {key:'este', label:'➡ ESTE', color:'#444',med:'esteMedida', col:'esteColindancia', cuad:'esteCuad', ang:'esteAng'},
+    {key:'oeste',label:'⬅ OESTE',color:'#444',med:'oesteMedida',col:'oesteColindancia',cuad:'oesteCuad',ang:'oesteAng'},
+  ];
+
+  return (
     <div style={{fontFamily:'Arial,sans-serif',background:'#e8edf3',minHeight:'100vh',padding:'16px'}}>
 
-      {/* ══ FORMULARIO ══ */}
+      {/* FORMULARIO */}
       <div style={{maxWidth:'950px',margin:'0 auto 20px',background:'white',borderRadius:'6px',overflow:'hidden',boxShadow:'0 2px 10px rgba(0,0,0,0.13)'}}>
         <div style={{background:'#004a8f',color:'white',padding:'14px 20px'}}>
           <h1 style={{margin:0,fontSize:'17px'}}>📋 Generador de Plano Catastral — Estado de México</h1>
@@ -475,7 +540,7 @@ const App = () => {
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
             <div style={{position:'relative'}}>
-              <label style={lbl}>Municipio (búsqueda)</label>
+              <label style={lbl}>Municipio</label>
               <input style={inp} value={munQuery} onChange={handleMunInput}
                 onFocus={()=>munQuery&&setShowMun(true)} onBlur={()=>setTimeout(()=>setShowMun(false),160)}
                 placeholder="Escriba para buscar..." autoComplete="off"/>
@@ -490,69 +555,114 @@ const App = () => {
                 </div>
               )}
             </div>
-            <div><label style={lbl}>Estado de la República</label>
+            <div><label style={lbl}>Estado</label>
               <select style={inp} name="estado" value={form.estado} onChange={handleChange}>
                 {ESTADOS.map(e=><option key={e} value={e}>{e.charAt(0)+e.slice(1).toLowerCase()}</option>)}
               </select></div>
           </div>
 
-          <h3 style={sec}>Medidas y Colindancias</h3>
-          {!geoCheck.valid&&(
-            <div style={{background:'#fff3cd',border:'1.5px solid #e67e00',borderRadius:'6px',padding:'10px 14px',marginBottom:'14px',fontSize:'12px',color:'#7d4000'}}>
-              <strong>⚠ Las medidas no forman un cuadrilátero geométricamente válido</strong> — el croquis mostrará una representación aproximada.
-            </div>
-          )}
+          <h3 style={sec}>Medidas, Rumbos y Colindancias</h3>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px',marginBottom:'14px'}}>
             <div><label style={lbl}>Unidad de Medida</label>
               <select style={inp} name="unidadMedida" value={form.unidadMedida} onChange={handleChange}>
                 <option value="metros">Metros (m)</option>
-                <option value="varas">Varas (1 vara = 0.838 m)</option>
-                <option value="pies">Pies (1 pie = 0.3048 m)</option>
+                <option value="varas">Varas (0.838 m)</option>
+                <option value="pies">Pies (0.3048 m)</option>
               </select></div>
             <div><label style={lbl}>Uso de Suelo</label>
               <select style={inp} name="usoSuelo" value={form.usoSuelo} onChange={handleChange}>
                 {['HABITACIONAL','COMERCIAL','INDUSTRIAL','EQUIPAMIENTO','MIXTO','RÚSTICO','AGRÍCOLA'].map(u=>
                   <option key={u} value={u}>{u.charAt(0)+u.slice(1).toLowerCase()}</option>)}
               </select></div>
-            <div><label style={lbl}>Fecha de Elaboración</label><input style={inp} name="fecha" value={form.fecha} onChange={handleChange}/></div>
+            <div><label style={lbl}>Fecha</label><input style={inp} name="fecha" value={form.fecha} onChange={handleChange}/></div>
           </div>
+
+          {!useExact && (
+            <div style={{background:'#e3f2fd',border:'1px solid #1976d2',borderRadius:'5px',padding:'8px 12px',marginBottom:'14px',fontSize:'11px',color:'#0d47a1'}}>
+              💡 <strong>Tip:</strong> Si tienes el cuadro de construcción de un plano real, ingresa los <strong>rumbos</strong> en cada lado para obtener la figura exacta. Mientras no los ingreses, se calcula automáticamente.
+            </div>
+          )}
+          {useExact && (
+            <div style={{background:'#e8f5e9',border:'1px solid #388e3c',borderRadius:'5px',padding:'8px 12px',marginBottom:'14px',fontSize:'11px',color:'#1b5e20'}}>
+              ✅ <strong>Rumbos activos</strong> — la figura usa geometría exacta basada en los rumbos ingresados.
+            </div>
+          )}
+
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
-            {[
-              {label:'⬆ NORTE (Frente)',med:'norteMedida',col:'norteColindancia',color:'#c00'},
-              {label:'⬇ SUR (Fondo)',med:'surMedida',col:'surColindancia',color:'#555'},
-              {label:'➡ ESTE (Oriente)',med:'esteMedida',col:'esteColindancia',color:'#555'},
-              {label:'⬅ OESTE (Poniente)',med:'oesteMedida',col:'oesteColindancia',color:'#555'},
-            ].map(({label,med,col,color})=>(
-              <div key={med} style={{border:'1px solid #d0dcea',borderRadius:'5px',padding:'10px',background:'#f6f9ff'}}>
-                <div style={{fontWeight:'bold',color,fontSize:'12px',marginBottom:'8px'}}>{label}</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:'8px'}}>
-                  <div><label style={{...lbl,fontSize:'10px'}}>Medida ({form.unidadMedida})</label><input style={inp} name={med} value={form[med]} onChange={handleChange}/></div>
-                  <div><label style={{...lbl,fontSize:'10px'}}>Colindancia</label><input style={inp} name={col} value={form[col]} onChange={handleChange}/></div>
+            {SIDES.map(({key,label,color,med,col,cuad,ang})=>(
+              <div key={key} style={{border:`2px solid ${frontes.has(key)?'#2e7d32':'#d0dcea'}`,borderRadius:'6px',padding:'10px',background:frontes.has(key)?'#f1fff1':'#f6f9ff'}}>
+                {/* Header */}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+                  <span style={{fontWeight:'bold',color,fontSize:'12px'}}>{label}</span>
+                  <div style={{display:'flex',gap:'5px',alignItems:'center'}}>
+                    {frontes.has(key) && (
+                      <span style={{background:'#2e7d32',color:'white',borderRadius:'10px',padding:'2px 7px',fontSize:'9px',fontWeight:'bold'}}>🛣️ FRENTE</span>
+                    )}
+                    <button onClick={()=>toggleFrente(key)} style={{
+                      padding:'3px 9px',fontSize:'10px',fontWeight:'bold',border:'none',borderRadius:'4px',cursor:'pointer',
+                      background:frontes.has(key)?'#c62828':'#2e7d32',color:'white',
+                    }}>
+                      {frontes.has(key)?'✕ Quitar Frente':'🛣️ Marcar Frente'}
+                    </button>
+                  </div>
                 </div>
+                {/* Medida y colindancia */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:'8px',marginBottom:'8px'}}>
+                  <div><label style={{...lbl,fontSize:'10px'}}>Medida ({form.unidadMedida})</label>
+                    <input style={inp} name={med} value={form[med]} onChange={handleChange}/></div>
+                  <div><label style={{...lbl,fontSize:'10px'}}>Colindancia</label>
+                    <input style={inp} name={col} value={form[col]} onChange={handleChange}/></div>
+                </div>
+                {/* Rumbo opcional */}
+                <details style={{marginTop:'4px'}}>
+                  <summary style={{fontSize:'10px',cursor:'pointer',color:'#1565c0',fontWeight:'bold',listStyle:'none',display:'flex',alignItems:'center',gap:'4px'}}>
+                    <span>📐</span>
+                    <span>Rumbo del cuadro de construcción {form[ang]?`· ${parseBearing(form[cuad],form[ang])?.toFixed(2)}°`:''}</span>
+                  </summary>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:'8px',marginTop:'6px',padding:'8px',background:'#f0f6ff',borderRadius:'4px'}}>
+                    <div>
+                      <label style={{...lbl,fontSize:'9px'}}>Cuadrante</label>
+                      <select style={{...inp,fontSize:'12px'}} name={cuad} value={form[cuad]} onChange={handleChange}>
+                        <option value="NE">N...° E</option>
+                        <option value="SE">S...° E</option>
+                        <option value="SW">S...° O</option>
+                        <option value="NW">N...° O</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{...lbl,fontSize:'9px'}}>Ángulo (0° – 90°)</label>
+                      <input style={{...inp,fontSize:'12px'}} name={ang} value={form[ang]} onChange={handleChange} placeholder="ej: 57.51"/>
+                    </div>
+                  </div>
+                  {form[ang] && parseBearing(form[cuad],form[ang]) !== null && (
+                    <div style={{fontSize:'10px',color:'#1565c0',marginTop:'4px',paddingLeft:'4px'}}>
+                      → Rumbo: {fmtB(parseBearing(form[cuad],form[ang]))} ({parseBearing(form[cuad],form[ang]).toFixed(4)}°)
+                    </div>
+                  )}
+                </details>
               </div>
             ))}
           </div>
 
-          {/* Orientación control */}
+          {/* Orientación slider */}
           <div style={{marginTop:'14px',border:'2px solid #0066cc',borderRadius:'6px',padding:'12px 16px',background:'#f0f6ff'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'10px'}}>
               <div>
-                <div style={{fontWeight:'bold',fontSize:'12px',color:'#004a8f'}}>🧭 Orientación del frente Norte</div>
-                <div style={{fontSize:'11px',color:'#555',marginTop:'2px'}}>Doble clic en el terreno del plano para girar</div>
+                <div style={{fontWeight:'bold',fontSize:'12px',color:'#004a8f'}}>🧭 Orientación en el plano (rotación visual)</div>
+                <div style={{fontSize:'11px',color:'#555',marginTop:'2px'}}>También puedes hacer doble clic en el terreno del plano y arrastrarlo</div>
               </div>
-              <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
-                <div style={{fontSize:'16px',fontWeight:'bold',color:'#003a6e'}}>{shortB(bN)}</div>
-                <div style={{fontSize:'13px',color:'#666'}}>({rotation.toFixed(1)}°)</div>
+              <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                <span style={{fontWeight:'bold',color:'#003a6e',fontSize:'15px'}}>{shortB(bNd)}</span>
                 <button onClick={()=>{setRotation(0);setSelected(false);}}
                   style={{padding:'5px 12px',background:'#6c757d',color:'white',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'12px'}}>
-                  Resetear
+                  Resetear 0°
                 </button>
               </div>
             </div>
             <input type="range" min="0" max="359" step="0.5" value={rotation}
               onChange={e=>setRotation(parseFloat(e.target.value))}
               style={{width:'100%',marginTop:'10px',accentColor:'#004a8f'}}/>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'#888'}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'#888',marginTop:'2px'}}>
               <span>N 0°</span><span>E 90°</span><span>S 180°</span><span>O 270°</span><span>N 360°</span>
             </div>
           </div>
@@ -578,11 +688,12 @@ const App = () => {
         </div>
       </div>
 
-      {/* ══ VISTA PREVIA ══ */}
+      {/* VISTA PREVIA */}
       <div style={{maxWidth:'950px',margin:'0 auto'}}>
         <div style={{background:'#004a8f',color:'white',padding:'8px 16px',borderRadius:'4px 4px 0 0',fontSize:'12px',fontWeight:'bold'}}>
           📄 VISTA PREVIA EN TIEMPO REAL — Doble clic en el terreno para girar
         </div>
+
         <div ref={printRef} style={{width:'816px',height:'1056px',background:'white',padding:'14px 14px 10px',boxSizing:'border-box',fontFamily:'Arial,sans-serif',fontSize:'9px',color:'#000',overflow:'hidden'}}>
 
           {/* Encabezado */}
@@ -602,8 +713,14 @@ const App = () => {
                 <div style={{fontSize:'8px',color:'#444'}}>PLANO DE LOCALIZACIÓN, MEDIDAS Y COLINDANCIAS</div>
               </div>
               <div style={{fontSize:'7px',textAlign:'right',flexShrink:0}}>
-                <div style={{border:'1px solid #000',padding:'3px 6px',marginBottom:'3px'}}><div style={{fontWeight:'bold'}}>FOLIO:</div><div style={{fontSize:'8px',fontWeight:'bold'}}>{form.claveCatastral}</div></div>
-                <div style={{border:'1px solid #000',padding:'3px 6px'}}><div style={{fontWeight:'bold'}}>FECHA:</div><div>{form.fecha}</div></div>
+                <div style={{border:'1px solid #000',padding:'3px 6px',marginBottom:'3px'}}>
+                  <div style={{fontWeight:'bold'}}>FOLIO:</div>
+                  <div style={{fontSize:'8px',fontWeight:'bold'}}>{form.claveCatastral}</div>
+                </div>
+                <div style={{border:'1px solid #000',padding:'3px 6px'}}>
+                  <div style={{fontWeight:'bold'}}>FECHA:</div>
+                  <div>{form.fecha}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -613,8 +730,10 @@ const App = () => {
             <span style={{fontSize:'14px',fontWeight:'bold',letterSpacing:'3px',color:'#003a6e'}}>{form.claveCatastral}</span>
           </div>
 
-          <div style={{display:'grid',gridTemplateColumns:'215px 1fr',gap:'6px',height:'888px'}}>
-            {/* Columna izquierda */}
+          {/* Cuerpo 2 columnas */}
+          <div style={{display:'grid',gridTemplateColumns:'215px 1fr',gap:'6px',height:'892px'}}>
+
+            {/* Columna izquierda — solo tablas + foto */}
             <div style={{display:'flex',flexDirection:'column',gap:'4px',overflow:'hidden'}}>
               <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead><tr><th colSpan="2" style={thH}>DATOS DEL PROPIETARIO</th></tr></thead>
@@ -639,59 +758,57 @@ const App = () => {
                   <tr><td style={tdH}>LADO ESTE:</td><td style={tdV}>{esteM.toFixed(2)} m</td></tr>
                   <tr><td style={tdH}>LADO OESTE:</td><td style={tdV}>{oesteM.toFixed(2)} m</td></tr>
                   <tr><td style={tdH}>USO SUELO:</td><td style={tdV}>{form.usoSuelo}</td></tr>
-                  <tr><td style={tdH}>ORIENTACIÓN:</td><td style={{...tdV,fontWeight:'bold',color:'#003a6e'}}>{shortB(bN)}</td></tr>
+                  <tr><td style={tdH}>FRENTE(S):</td>
+                    <td style={{...tdV,color:'#1a7a1a',fontWeight:'bold'}}>
+                      {frontes.size>0 ? Array.from(frontes).map(s=>s.toUpperCase()).join(', ') : '—'}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
-              {/* Linderos con rumbos */}
+              {/* Cuadro de construcción */}
               <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead>
-                  <tr><th colSpan="4" style={thH}>LINDEROS, COLINDANCIAS Y RUMBOS</th></tr>
+                  <tr><th colSpan="3" style={thH}>CUADRO DE CONSTRUCCIÓN</th></tr>
                   <tr>
                     <th style={{border:'1px solid #000',padding:'2px',background:'#d8e4f0',fontSize:'6px'}}>LADO</th>
-                    <th style={{border:'1px solid #000',padding:'2px',background:'#d8e4f0',fontSize:'6px'}}>MED.(m)</th>
+                    <th style={{border:'1px solid #000',padding:'2px',background:'#d8e4f0',fontSize:'6px'}}>DIST.(m)</th>
                     <th style={{border:'1px solid #000',padding:'2px',background:'#d8e4f0',fontSize:'6px'}}>RUMBO</th>
-                    <th style={{border:'1px solid #000',padding:'2px',background:'#d8e4f0',fontSize:'6px'}}>COLINDANCIA</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    {r:'NORTE',m:norteM,b:bN,c:form.norteColindancia},
-                    {r:'SUR',  m:surM,  b:bS,c:form.surColindancia},
-                    {r:'ESTE', m:esteM, b:bE,c:form.esteColindancia},
-                    {r:'OESTE',m:oesteM,b:bO,c:form.oesteColindancia},
-                  ].map(({r,m,b,c})=>(
+                    {r:'NORTE',m:norteM,b:bNd,col:form.norteColindancia},
+                    {r:'SUR',  m:surM,  b:bSd,col:form.surColindancia},
+                    {r:'ESTE', m:esteM, b:bEd,col:form.esteColindancia},
+                    {r:'OESTE',m:oesteM,b:bOd,col:form.oesteColindancia},
+                  ].map(({r,m,b,col})=>(
                     <tr key={r}>
                       <td style={{...tdH,fontSize:'6.5px'}}>{r}</td>
                       <td style={{...tdV,textAlign:'center'}}>{m.toFixed(2)}</td>
                       <td style={{...tdV,fontSize:'6px',color:'#003a6e',fontWeight:'bold'}}>{fmtB(b)}</td>
-                      <td style={{...tdV,fontSize:'6px'}}>{c}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div style={{fontSize:'5.5px',textAlign:'justify',border:'1px solid #ccc',padding:'3px 4px',background:'#fffde7',lineHeight:1.4}}>
-                <strong>NOTA LEGAL:</strong> Cédula Catastral conforme al Código Financiero del Estado de México y Municipios. Superficie fiscal. No sustituye escritura pública ni plano topográfico. Los rumbos se expresan en sistema cuadrantal referidos al Norte magnético.
-              </div>
-              <div style={{border:'1px solid #000',padding:'5px',textAlign:'center'}}>
-                <div style={{fontWeight:'bold',fontSize:'6.5px',background:'#003a6e',color:'white',margin:'-5px -5px 6px',padding:'3px'}}>PERITO RESPONSABLE</div>
-                <div style={{height:'38px'}}/>
-                <div style={{borderTop:'1px solid #000',paddingTop:'3px',fontSize:'6px'}}><div>NOMBRE Y FIRMA</div><div>CÉD. PROFESIONAL</div></div>
-              </div>
-              <div style={{border:'1px solid #000',padding:'5px',textAlign:'center'}}>
-                <div style={{fontWeight:'bold',fontSize:'6.5px',background:'#003a6e',color:'white',margin:'-5px -5px 6px',padding:'3px'}}>AUTORIZACIÓN OFICIAL</div>
-                <div style={{height:'38px'}}/>
-                <div style={{borderTop:'1px solid #000',paddingTop:'3px',fontSize:'6px'}}>
-                  <div>DIR. DE CATASTRO MUNICIPAL</div>
-                  <div style={{marginTop:'3px',border:'1px dashed #999',padding:'2px',fontSize:'6px'}}>SELLO OFICIAL</div>
-                </div>
-              </div>
-              <div style={{border:'1px solid #000',padding:'5px',textAlign:'center',fontSize:'7px'}}>
-                <div style={{fontWeight:'bold',color:'#003a6e',marginBottom:'2px'}}>VIGENCIA</div>
-                <div>Ejercicio Fiscal en Curso</div>
-                <div style={{fontWeight:'bold',marginTop:'4px',fontSize:'6px'}}>FOLIO ÚNICO:</div>
-                <div style={{fontWeight:'bold',fontSize:'9px',letterSpacing:'1px',color:'#003a6e'}}>{form.claveCatastral}</div>
-              </div>
-              <div style={{flex:1,minHeight:'90px',border:'2px dashed #90a4ae',borderRadius:'4px',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',background:'#f8f9fa'}}>
+              {/* Colindancias */}
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead>
+                  <tr><th colSpan="2" style={thH}>COLINDANCIAS</th></tr>
+                </thead>
+                <tbody>
+                  {[
+                    {r:'NORTE',c:form.norteColindancia},
+                    {r:'SUR',  c:form.surColindancia},
+                    {r:'ESTE', c:form.esteColindancia},
+                    {r:'OESTE',c:form.oesteColindancia},
+                  ].map(({r,c})=>(
+                    <tr key={r}><td style={{...tdH,fontSize:'6.5px'}}>{r}:</td><td style={{...tdV,fontSize:'6.5px'}}>{c}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Foto — resto del espacio */}
+              <div style={{flex:1,minHeight:'100px',border:'2px dashed #90a4ae',borderRadius:'4px',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',background:'#f8f9fa'}}>
                 {imagenSrc
                   ?<img src={imagenSrc} alt="terreno" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                   :<div style={{textAlign:'center'}}><div style={{fontSize:'22px',color:'#ccc'}}>📷</div><div style={{fontSize:'7px',color:'#aaa',marginTop:'3px'}}>Foto / croquis del terreno</div></div>
@@ -711,16 +828,19 @@ const App = () => {
                 <TerrenoCroquis
                   norteM={norteM} surM={surM} esteM={esteM} oesteM={oesteM}
                   norteCol={form.norteColindancia} surCol={form.surColindancia}
-                  esteCol={form.esteColindancia} oesteCol={form.oesteColindancia}
+                  esteCol={form.esteColindancia}   oesteCol={form.oesteColindancia}
                   usoSuelo={form.usoSuelo} areaM2={areaM2}
-                  svgW={CROQUIS_W} svgH={CROQUIS_H}
+                  svgW={CW} svgH={CH}
                   rotation={rotation} onRotate={setRotation}
                   selected={selected} onSelect={setSelected}
+                  bN={bN} bS={bS} bE={bE} bO={bO}
+                  frontes={frontes}
                 />
               </div>
             </div>
           </div>
 
+          {/* Pie */}
           <div style={{marginTop:'4px',borderTop:'2px solid #000',paddingTop:'3px',display:'flex',justifyContent:'space-between',fontSize:'6.5px',color:'#333'}}>
             <div>Generado el {form.fecha} | Sistema de Información Catastral | {form.municipio}, {form.estado}</div>
             <div style={{fontWeight:'bold'}}>CLAVE: {form.claveCatastral}</div>
