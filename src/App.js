@@ -2,14 +2,14 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-const ESTADOS = [
+const ESTADOS =[
   'AGUASCALIENTES','BAJA CALIFORNIA','BAJA CALIFORNIA SUR','CAMPECHE','CHIAPAS','CHIHUAHUA',
   'CIUDAD DE MÉXICO','COAHUILA DE ZARAGOZA','COLIMA','DURANGO','ESTADO DE MÉXICO','GUANAJUATO',
   'GUERRERO','HIDALGO','JALISCO','MICHOACÁN DE OCAMPO','MORELOS','NAYARIT','NUEVO LEÓN',
   'OAXACA','PUEBLA','QUERÉTARO','QUINTANA ROO','SAN LUIS POTOSÍ','SINALOA','SONORA','TABASCO',
   'TAMAULIPAS','TLAXCALA','VERACRUZ DE IGNACIO DE LA LLAVE','YUCATÁN','ZACATECAS'
 ];
-const MUNICIPIOS = [
+const MUNICIPIOS =[
   'Acambay de Ruíz Castañeda','Acolman','Aculco','Almoloya de Alquisiras','Almoloya de Juárez',
   'Almoloya del Río','Amanalco','Amatepec','Amecameca','Apaxco','Atenco','Atizapán',
   'Atizapán de Zaragoza','Atlacomulco','Atlautla','Axapusco','Ayapango','Calimaya','Capulhuac',
@@ -348,12 +348,12 @@ const TerrenoCroquis = ({norteM,surM,esteM,oesteM,norteCol,surCol,esteCol,oesteC
       <line x1={cx-32} y1={cy+22} x2={cx+32} y2={cy+22} stroke="#003a6e" strokeWidth="0.6"/>
       <text x={cx} y={cy+31} textAnchor="middle" fontSize="7" fill="#888" fontFamily="Arial">P = {perim} m</text>
 
-      {/* Scale bar — bottom left */}
-      <rect x={8} y={svgH-18} width={scaleBarPx} height={7} fill="none" stroke="#444" strokeWidth="1"/>
-      <rect x={8} y={svgH-18} width={scaleBarPx/2} height={7} fill="#444"/>
-      <text x={8}              y={svgH-5} fontSize="7" fill="#333" fontFamily="Arial">0</text>
-      <text x={8+scaleBarPx/2} y={svgH-5} textAnchor="middle" fontSize="7" fill="#333" fontFamily="Arial">{scaleBarM/2}m</text>
-      <text x={8+scaleBarPx}   y={svgH-5} textAnchor="middle" fontSize="7" fill="#333" fontFamily="Arial">{scaleBarM}m</text>
+      {/* Scale bar — bottom right, shifted so the photo overlay on the left doesn't cover it */}
+      <rect x={svgW - scaleBarPx - 15} y={svgH-18} width={scaleBarPx} height={7} fill="none" stroke="#444" strokeWidth="1"/>
+      <rect x={svgW - scaleBarPx - 15} y={svgH-18} width={scaleBarPx/2} height={7} fill="#444"/>
+      <text x={svgW - scaleBarPx - 15}              y={svgH-5} fontSize="7" fill="#333" fontFamily="Arial">0</text>
+      <text x={svgW - scaleBarPx/2 - 15} y={svgH-5} textAnchor="middle" fontSize="7" fill="#333" fontFamily="Arial">{scaleBarM/2}m</text>
+      <text x={svgW - 15}   y={svgH-5} textAnchor="end" fontSize="7" fill="#333" fontFamily="Arial">{scaleBarM}m</text>
 
       {/* Rotation UI */}
       {selected&&(
@@ -371,12 +371,6 @@ const TerrenoCroquis = ({norteM,surM,esteM,oesteM,norteCol,surCol,esteCol,oesteC
           </text>
         </g>
       )}
-      {!selected&&(
-        <text x={svgW/2} y={svgH-5} textAnchor="middle" fontSize="6.5" fill="#bbb" fontFamily="Arial"
-          style={{cursor:'pointer'}} onDoubleClick={()=>onSelect(true)}>
-          Doble clic para girar
-        </text>
-      )}
       <polygon points={rPts} fill="transparent" stroke="none"
         onDoubleClick={()=>onSelect(!selected)} style={{cursor:'pointer'}}/>
     </svg>
@@ -388,7 +382,7 @@ const App = () => {
   const printRef = useRef();
   const [rotation, setRotation] = useState(0);
   const [selected, setSelected] = useState(false);
-  const [frontes, setFrontes] = useState(new Set(['norte']));
+  const[frontes, setFrontes] = useState(new Set(['norte']));
   const [munQuery, setMunQuery] = useState('Tlalnepantla de Baz');
   const [munSug, setMunSug] = useState([]);
   const [showMun, setShowMun] = useState(false);
@@ -426,7 +420,7 @@ const App = () => {
   const useExact=bN!==null&&bS!==null&&bE!==null&&bO!==null;
 
   /* Compute rotated bearings for table */
-  const CW=560, CH=660;
+  const CW=788, CH=660; // Ancho ampliado para la gráfica de 1 columna
   const geo=useExact?computeFromBearings(nM,sM,eM,oM,bN,bS,bE,bO):solveQuad(nM,sM,eM,oM);
   const PAD2=70, DW=CW-PAD2*2, DH=CH-PAD2*2;
   const{TL:t2,TR:r2,BL:bl2,BR:br2}=geo;
@@ -606,14 +600,14 @@ const App = () => {
         <div ref={printRef} style={{width:'816px',height:'1056px',background:'white',padding:'12px',boxSizing:'border-box',fontFamily:'Arial,sans-serif',fontSize:'9px',color:'#000',overflow:'hidden',display:'flex',flexDirection:'column',gap:'4px'}}>
 
           {/* 1. ENCABEZADO */}
-          <div style={{border:'3px solid #000',padding:'5px 10px',flexShrink:0}}>
+          <div style={{border:'3px solid #000',padding:'5px 10px',flexShrink:0,position:'relative'}}>
             <div style={{textAlign:'center'}}>
               <div style={{fontSize:'11px',fontWeight:'bold'}}>GOBIERNO DEL ESTADO DE MÉXICO</div>
               <div style={{fontSize:'8.5px',fontWeight:'bold'}}>SECRETARÍA DE FINANZAS — DIRECCIÓN GENERAL DE CATASTRO E INFORMACIÓN TERRITORIAL</div>
               <div style={{fontSize:'12px',fontWeight:'bold',borderTop:'1px solid #000',marginTop:'3px',paddingTop:'3px'}}>CÉDULA DE DETERMINACIÓN CATASTRAL</div>
               <div style={{fontSize:'7.5px',color:'#444'}}>PLANO DE LOCALIZACIÓN, MEDIDAS Y COLINDANCIAS</div>
             </div>
-            <div style={{display:'flex',justifyContent:'flex-end',gap:'5px',marginTop:'-38px'}}>
+            <div style={{position:'absolute',top:'8px',right:'10px',display:'flex',gap:'5px'}}>
               <div style={{border:'1px solid #000',padding:'2px 6px',fontSize:'7px',textAlign:'right'}}>
                 <div style={{fontWeight:'bold'}}>FOLIO:</div><div style={{fontSize:'8px',fontWeight:'bold'}}>{form.claveCatastral}</div>
               </div>
@@ -694,40 +688,36 @@ const App = () => {
             </div>
           </div>
 
-          {/* 4. ZONA INFERIOR: foto izq + croquis derecha — flex:1 take all remaining space */}
-          <div style={{display:'grid',gridTemplateColumns:'130px 1fr',gap:'4px',flex:1,minHeight:0}}>
+          {/* 4. ZONA INFERIOR: croquis full width con elementos superpuestos */}
+          <div style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,border:'2px solid #000',background:'#fafcff',position:'relative'}}>
+            <div style={{textAlign:'center',fontWeight:'bold',fontSize:'7px',background:'#003a6e',color:'white',padding:'2px 4px',flexShrink:0,zIndex:2}}>
+              CROQUIS DEL PREDIO — REPRESENTACIÓN GRÁFICA PROPORCIONAL
+            </div>
+            
+            <div style={{flex:1,minHeight:0,position:'relative',display:'flex',alignItems:'stretch',justifyContent:'stretch'}}>
+              <TerrenoCroquis
+                norteM={nM} surM={sM} esteM={eM} oesteM={oM}
+                norteCol={form.norteColindancia} surCol={form.surColindancia}
+                esteCol={form.esteColindancia}   oesteCol={form.oesteColindancia}
+                usoSuelo={form.usoSuelo} areaM2={area}
+                svgW={CW} svgH={CH}
+                rotation={rotation} onRotate={setRotation}
+                selected={selected} onSelect={setSelected}
+                bN={bN} bS={bS} bE={bE} bO={bO}
+                frontes={frontes}
+              />
+              
+              {/* Overlay Rosa de Vientos (esquina superior derecha de la gráfica) */}
+              <div style={{position:'absolute', top:'15px', right:'15px', pointerEvents:'none', zIndex:10}}>
+                <RosaVientos size={72}/>
+              </div>
 
-            {/* Foto — cuadrada en la parte de arriba, luego espacio libre */}
-            <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-              <div style={{width:'130px',height:'130px',flexShrink:0,border:'2px dashed #90a4ae',borderRadius:'4px',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',background:'#f8f9fa'}}>
+              {/* Overlay Foto del Terreno (esquina inferior izquierda de la gráfica) */}
+              <div style={{position:'absolute', bottom:'15px', left:'15px', width:'130px', height:'130px', border:'2px dashed #90a4ae', borderRadius:'4px', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(248, 249, 250, 0.85)', backdropFilter:'blur(2px)', zIndex:10, boxShadow:'0 2px 6px rgba(0,0,0,0.15)'}}>
                 {imagenSrc
                   ?<img src={imagenSrc} alt="terreno" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                   :<div style={{textAlign:'center'}}><div style={{fontSize:'26px',color:'#ccc'}}>📷</div><div style={{fontSize:'7px',color:'#aaa',marginTop:'3px'}}>Foto del terreno</div></div>
                 }
-              </div>
-              {/* Rosa de vientos debajo de la foto */}
-              <div style={{display:'flex',justifyContent:'center',paddingTop:'8px'}}>
-                <RosaVientos size={72}/>
-              </div>
-            </div>
-
-            {/* Croquis — takes all remaining height */}
-            <div style={{border:'2px solid #000',background:'#fafcff',display:'flex',flexDirection:'column',minHeight:0}}>
-              <div style={{textAlign:'center',fontWeight:'bold',fontSize:'7px',background:'#003a6e',color:'white',padding:'2px 4px',flexShrink:0}}>
-                CROQUIS DEL PREDIO — REPRESENTACIÓN GRÁFICA PROPORCIONAL
-              </div>
-              <div style={{flex:1,minHeight:0,display:'flex',alignItems:'stretch',justifyContent:'stretch'}}>
-                <TerrenoCroquis
-                  norteM={nM} surM={sM} esteM={eM} oesteM={oM}
-                  norteCol={form.norteColindancia} surCol={form.surColindancia}
-                  esteCol={form.esteColindancia}   oesteCol={form.oesteColindancia}
-                  usoSuelo={form.usoSuelo} areaM2={area}
-                  svgW={CW} svgH={CH}
-                  rotation={rotation} onRotate={setRotation}
-                  selected={selected} onSelect={setSelected}
-                  bN={bN} bS={bS} bE={bE} bO={bO}
-                  frontes={frontes}
-                />
               </div>
             </div>
           </div>
