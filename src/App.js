@@ -382,11 +382,11 @@ const App = () => {
   const printRef = useRef();
   const[rotation, setRotation] = useState(0);
   const [selected, setSelected] = useState(false);
-  const [frontes, setFrontes] = useState(new Set(['norte']));
+  const[frontes, setFrontes] = useState(new Set(['norte']));
   const[munQuery, setMunQuery] = useState('Tlalnepantla de Baz');
   const[munSug, setMunSug] = useState([]);
   const [showMun, setShowMun] = useState(false);
-  const[imagenSrc, setImagenSrc] = useState(null);
+  const [imagenSrc, setImagenSrc] = useState(null);
   const [form, setForm] = useState({
     claveCatastral:'15-001-002-003-04', propietario:'JUAN PÉREZ LÓPEZ',
     calle:'CALLE DE LOS ARCOS', numero:'123', colonia:'COL. CENTRO',
@@ -402,79 +402,6 @@ const App = () => {
     oesteCuad:'NW', oesteAng:'23.13',
     fecha: new Date().toLocaleDateString('es-MX'),
   });
-
-  // --- SISTEMA DE DATOS EN VIVO (Clima, Economía, Enfermedades y Noticias) ---
-  const[liveData, setLiveData] = useState({
-    weather: null,
-    economy: null,
-    disease: null,
-    news:[],
-    currentNewsIndex: 0
-  });
-
-  useEffect(() => {
-    const fallbackNews =[
-      {title: "Mercados globales muestran volatilidad en el día de hoy"},
-      {title: "Avances tecnológicos benefician al sector salud e inmobiliario"},
-      {title: "Siguen las fluctuaciones en el tipo de cambio internacional"}
-    ];
-
-    const fetchLiveData = async () => {
-      try {
-        // Clima (Open-Meteo CDMX)
-        const weatherRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=19.4326&longitude=-99.1332&current_weather=true');
-        const weatherData = await weatherRes.json();
-        
-        // Economía (ExchangeRate-API: USD a MXN)
-        const econRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-        const econData = await econRes.json();
-
-        // Enfermedades (Disease.sh: Casos COVID México)
-        const disRes = await fetch('https://disease.sh/v3/covid-19/countries/Mexico');
-        const disData = await disRes.json();
-
-        // Noticias (RSS Mundo a JSON)
-        const newsRes = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https://feeds.bbci.co.uk/mundo/rss.xml');
-        const newsData = await newsRes.json();
-
-        setLiveData(prev => ({
-          ...prev,
-          weather: weatherData.current_weather,
-          economy: econData.rates.MXN,
-          disease: disData,
-          news: newsData.items && newsData.items.length > 0 ? newsData.items : fallbackNews
-        }));
-      } catch (err) {
-        console.error("No se pudieron cargar todos los datos vivos, usando respaldos.", err);
-        setLiveData(prev => ({
-          ...prev,
-          weather: prev.weather || { temperature: 24.5 },
-          economy: prev.economy || 16.50,
-          disease: prev.disease || { cases: 7500000, todayCases: 0 },
-          news: prev.news.length ? prev.news : fallbackNews
-        }));
-      }
-    };
-
-    fetchLiveData();
-    // Re-fetch datos completos cada 10 minutos (600,000 ms)
-    const dataInterval = setInterval(fetchLiveData, 600000);
-    return () => clearInterval(dataInterval);
-  },[]);
-
-  // Intervalo automático para rotar titulares de noticias cada 6 segundos
-  useEffect(() => {
-    if (liveData.news.length > 0) {
-      const newsTicker = setInterval(() => {
-        setLiveData(prev => ({
-          ...prev,
-          currentNewsIndex: (prev.currentNewsIndex + 1) % prev.news.length
-        }));
-      }, 6000);
-      return () => clearInterval(newsTicker);
-    }
-  },[liveData.news.length]);
-  // --------------------------------------------------------------------------
 
   const hC = e => setForm(f=>({...f,[e.target.name]:e.target.value}));
   const hMI = e => {
@@ -537,38 +464,6 @@ const App = () => {
 
   return(
     <div style={{fontFamily:'Arial,sans-serif',background:'#e8edf3',minHeight:'100vh',padding:'16px'}}>
-
-      {/* ══ WIDGETS EXTERNOS EN VIVO ══ */}
-      <div style={{maxWidth:'950px', margin:'0 auto 20px', display:'flex', gap:'10px', overflowX:'auto', background:'white', padding:'10px', borderRadius:'6px', boxShadow:'0 2px 10px rgba(0,0,0,0.13)'}}>
-        {/* Clima */}
-        <div style={{minWidth:'140px', padding:'5px 15px', borderRight:'1px solid #eee'}}>
-          <div style={{fontSize:'11px', color:'#888', fontWeight:'bold'}}>🌦️ CLIMA</div>
-          <div style={{fontSize:'16px', fontWeight:'bold', color:'#004a8f'}}>
-            {liveData.weather ? `${liveData.weather.temperature}°C` : 'Cargando...'}
-          </div>
-        </div>
-        {/* Economía */}
-        <div style={{minWidth:'140px', padding:'5px 15px', borderRight:'1px solid #eee'}}>
-          <div style={{fontSize:'11px', color:'#888', fontWeight:'bold'}}>💵 TIPO DE CAMBIO</div>
-          <div style={{fontSize:'16px', fontWeight:'bold', color:'#2e7d32'}}>
-            {liveData.economy ? `$${liveData.economy.toFixed(2)} MXN` : 'Cargando...'}
-          </div>
-        </div>
-        {/* Enfermedades (Covid MX) */}
-        <div style={{minWidth:'140px', padding:'5px 15px', borderRight:'1px solid #eee'}}>
-          <div style={{fontSize:'11px', color:'#888', fontWeight:'bold'}}>🦠 COVID MX</div>
-          <div style={{fontSize:'16px', fontWeight:'bold', color:'#c62828'}}>
-            {liveData.disease ? `${(liveData.disease.cases / 1000000).toFixed(1)}M Casos` : 'Cargando...'}
-          </div>
-        </div>
-        {/* Noticias Ticker */}
-        <div style={{flex:1, padding:'5px 15px', display:'flex', flexDirection:'column', justifyContent:'center', minWidth:'250px'}}>
-          <div style={{fontSize:'11px', color:'#888', fontWeight:'bold'}}>📰 ÚLTIMA HORA (Actualización automática)</div>
-          <div style={{fontSize:'14px', fontWeight:'bold', color:'#333', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-            {liveData.news.length > 0 ? liveData.news[liveData.currentNewsIndex].title : 'Cargando noticias...'}
-          </div>
-        </div>
-      </div>
 
       {/* ══ FORMULARIO ══ */}
       <div style={{maxWidth:'950px',margin:'0 auto 20px',background:'white',borderRadius:'6px',overflow:'hidden',boxShadow:'0 2px 10px rgba(0,0,0,0.13)'}}>
@@ -800,20 +695,6 @@ const App = () => {
             </div>
             
             <div style={{flex:1,minHeight:0,position:'relative',display:'flex',alignItems:'stretch',justifyContent:'stretch'}}>
-              
-              {/* === WIDGET INTERNO EN VIVO === */}
-              <div style={{position:'absolute', top:'15px', left:'15px', width:'200px', background:'rgba(255,255,255,0.85)', padding:'8px 10px', borderRadius:'4px', zIndex:10, fontSize:'8px', backdropFilter:'blur(2px)', boxShadow:'0 2px 6px rgba(0,0,0,0.2)', pointerEvents:'none', border:'1px solid rgba(0,0,0,0.1)'}}>
-                <div style={{display:'flex', justifyContent:'space-between', marginBottom:'4px', borderBottom:'1px solid rgba(0,0,0,0.1)', paddingBottom:'4px'}}>
-                  <span style={{color:'#004a8f', fontWeight:'bold'}}>🌦️ {liveData.weather ? `${liveData.weather.temperature}°C` : '...'}</span>
-                  <span style={{color:'#2e7d32', fontWeight:'bold'}}>💵 {liveData.economy ? `$${liveData.economy.toFixed(2)}` : '...'}</span>
-                  <span style={{color:'#c62828', fontWeight:'bold'}}>🦠 {liveData.disease ? `${(liveData.disease.cases / 1000000).toFixed(1)}M` : '...'}</span>
-                </div>
-                <div style={{fontWeight:'bold', color:'#000', marginBottom:'2px'}}>📰 REPORTE DIARIO EN VIVO:</div>
-                <div style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%', color:'#444', fontStyle:'italic'}}>
-                  {liveData.news.length > 0 ? liveData.news[liveData.currentNewsIndex].title : 'Cargando...'}
-                </div>
-              </div>
-
               <TerrenoCroquis
                 norteM={nM} surM={sM} esteM={eM} oesteM={oM}
                 norteCol={form.norteColindancia} surCol={form.surColindancia}
